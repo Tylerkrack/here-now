@@ -50,6 +50,7 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
       case "bar": return Music;
       case "office": return Briefcase;
       case "park": return Users;
+      default: return MapPin; // Default fallback icon
     }
   };
 
