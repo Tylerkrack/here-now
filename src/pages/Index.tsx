@@ -7,7 +7,7 @@ import { useZones } from "@/hooks/useZones";
 import { useProfilesToSwipe } from "@/hooks/useSwipe";
 import { useMatches } from "@/hooks/useMatches";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
-import { MapView } from "@/components/map/MapView";
+import { RealMapView } from "@/components/map/RealMapView";
 import { SwipeDeck } from "@/components/swipe/SwipeDeck";
 import { MatchModal } from "@/components/match/MatchModal";
 import { ChatScreen } from "@/components/chat/ChatScreen";
@@ -236,7 +236,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-16">
       {appState === "map" && (
-        <MapView
+        <RealMapView
           onEnterZone={handleEnterZone}
           onOpenProfile={() => setAppState("profile")}
           onOpenSettings={() => setAppState("settings")}

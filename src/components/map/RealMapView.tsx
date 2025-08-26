@@ -1,0 +1,378 @@
+import React, { useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MapPin, Users, Settings, User, AlertCircle, MapIcon } from "lucide-react";
+import AppLogo from "@/components/ui/app-logo";
+import { useLocation } from "@/hooks/useLocation";
+import { useZones } from "@/hooks/useZones";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/use-toast";
+
+interface RealMapViewProps {
+  onEnterZone: (zoneId: string) => void;
+  onOpenProfile: () => void;
+  onOpenSettings: () => void;
+}
+
+export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: RealMapViewProps) {
+  const { user } = useAuth();
+  const { location, error: locationError, loading: locationLoading, getCurrentLocation, isInZone } = useLocation();
+  const { zones: dbZones, loading: zonesLoading } = useZones();
+  const { toast } = useToast();
+  
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const userMarker = useRef<mapboxgl.Marker | null>(null);
+  const zoneMarkers = useRef<mapboxgl.Marker[]>([]);
+  
+  const [mapboxToken, setMapboxToken] = useState<string>('');
+  const [showTokenInput, setShowTokenInput] = useState(true);
+  const [currentZone, setCurrentZone] = useState<any>(null);
+  const [showZoneNotification, setShowZoneNotification] = useState(false);
+
+  // Initialize map when token is provided
+  const initializeMap = () => {
+    if (!mapContainer.current || !mapboxToken) return;
+
+    mapboxgl.accessToken = mapboxToken;
+    
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12', // Real street map
+      center: [-122.4194, 37.7749], // Default to San Francisco
+      zoom: 13,
+      pitch: 45, // 3D-like view
+    });
+
+    // Add navigation controls
+    map.current.addControl(
+      new mapboxgl.NavigationControl({
+        visualizePitch: true,
+      }),
+      'top-right'
+    );
+
+    // Add geolocation control
+    map.current.addControl(
+      new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        trackUserLocation: true,
+        showUserHeading: true
+      }),
+      'top-right'
+    );
+
+    setShowTokenInput(false);
+    toast({
+      title: "Map loaded!",
+      description: "Real map with streets and buildings is now active",
+    });
+  };
+
+  // Update user location on map
+  useEffect(() => {
+    if (!map.current || !location) return;
+
+    // Move map to user location
+    map.current.flyTo({
+      center: [location.longitude, location.latitude],
+      zoom: 15,
+      duration: 2000
+    });
+
+    // Add or update user marker
+    if (userMarker.current) {
+      userMarker.current.remove();
+    }
+
+    const userEl = document.createElement('div');
+    userEl.className = 'user-marker';
+    userEl.style.cssText = `
+      width: 20px;
+      height: 20px;
+      background: #3b82f6;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      animation: pulse 2s infinite;
+    `;
+
+    userMarker.current = new mapboxgl.Marker(userEl)
+      .setLngLat([location.longitude, location.latitude])
+      .addTo(map.current);
+  }, [location]);
+
+  // Add zones to map
+  useEffect(() => {
+    if (!map.current || !dbZones.length) return;
+
+    // Clear existing zone markers
+    zoneMarkers.current.forEach(marker => marker.remove());
+    zoneMarkers.current = [];
+
+    dbZones.forEach(zone => {
+      const zoneEl = document.createElement('div');
+      zoneEl.className = 'zone-marker';
+      zoneEl.style.cssText = `
+        width: 40px;
+        height: 40px;
+        background: rgba(59, 130, 246, 0.2);
+        border: 2px solid #3b82f6;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 18px;
+      `;
+      
+      // Add zone type icon
+      const icons: Record<string, string> = {
+        cafe: '☕',
+        restaurant: '🍽️',
+        bar: '🍸',
+        office: '🏢',
+        park: '🌳'
+      };
+      zoneEl.textContent = icons[zone.zone_type] || '📍';
+
+      const marker = new mapboxgl.Marker(zoneEl)
+        .setLngLat([Number(zone.longitude), Number(zone.latitude)])
+        .addTo(map.current!);
+
+      // Add popup with zone info
+      const popup = new mapboxgl.Popup({ 
+        offset: 25,
+        closeButton: false
+      }).setHTML(`
+        <div class="p-2">
+          <h3 class="font-bold">${zone.name}</h3>
+          <p class="text-sm text-gray-600">${zone.zone_type}</p>
+          <p class="text-xs">Radius: ${zone.radius_meters}m</p>
+        </div>
+      `);
+
+      marker.setPopup(popup);
+      zoneMarkers.current.push(marker);
+    });
+  }, [dbZones]);
+
+  // Check for zone entry
+  useEffect(() => {
+    if (!location || !user) return;
+
+    let enteredZone: any = null;
+    for (const zone of dbZones) {
+      if (isInZone(Number(zone.latitude), Number(zone.longitude), zone.radius_meters || 100)) {
+        enteredZone = zone;
+        break;
+      }
+    }
+
+    if (enteredZone && (!currentZone || currentZone.id !== enteredZone.id)) {
+      setCurrentZone(enteredZone);
+      setShowZoneNotification(true);
+      
+      // Record user location in database
+      supabase
+        .from('user_locations')
+        .insert({
+          user_id: user.id,
+          zone_id: enteredZone.id,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          entered_at: new Date().toISOString()
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error recording location:', error);
+        });
+        
+      toast({
+        title: `Welcome to ${enteredZone.name}!`,
+        description: "You've entered a zone with other users nearby",
+      });
+    } else if (!enteredZone) {
+      setCurrentZone(null);
+      setShowZoneNotification(false);
+    }
+  }, [location, dbZones, user, isInZone, currentZone]);
+
+  return (
+    <div className="relative h-screen bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden">
+      {/* Header */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4">
+        <div className="flex items-center space-x-2">
+          <AppLogo size="md" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onOpenProfile}
+            className="bg-background/80 backdrop-blur-sm shadow-card"
+          >
+            <User className="w-5 h-5" />
+          </Button>
+        </div>
+        
+        <div className="text-center">
+          <h1 className="text-lg font-bold text-foreground">Discover</h1>
+          <p className="text-sm text-muted-foreground">Real map • Real locations</p>
+        </div>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={onOpenSettings}
+          className="bg-background/80 backdrop-blur-sm shadow-card"
+        >
+          <Settings className="w-5 h-5" />
+        </Button>
+      </div>
+
+      {/* Mapbox Token Input */}
+      {showTokenInput && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/90 backdrop-blur-sm">
+          <Card className="p-6 max-w-md w-full mx-4">
+            <div className="space-y-4">
+              <div className="text-center">
+                <MapIcon className="w-12 h-12 mx-auto mb-4 text-primary" />
+                <h2 className="text-xl font-bold">Real Map Setup</h2>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Enter your Mapbox token to see real streets, buildings, and locations
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mapbox Public Token</label>
+                <Input
+                  type="text"
+                  placeholder="pk.eyJ1..."
+                  value={mapboxToken}
+                  onChange={(e) => setMapboxToken(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Get your free token at{' '}
+                  <a 
+                    href="https://mapbox.com/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    mapbox.com
+                  </a>
+                </p>
+              </div>
+              
+              <Button 
+                onClick={initializeMap}
+                disabled={!mapboxToken.trim()}
+                className="w-full"
+              >
+                Load Real Map
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Real Mapbox Map */}
+      <div 
+        ref={mapContainer} 
+        className="absolute inset-0 w-full h-full"
+        style={{ display: showTokenInput ? 'none' : 'block' }}
+      />
+
+      {/* Location Debug Info */}
+      {location && !showTokenInput && (
+        <div className="absolute top-20 right-4 z-30">
+          <Card className="p-3 bg-background/90 backdrop-blur-sm shadow-card">
+            <div className="text-xs space-y-1">
+              <div className="font-medium text-primary">📍 Your Location</div>
+              <div className="text-muted-foreground">
+                Lat: {location.latitude.toFixed(6)}
+              </div>
+              <div className="text-muted-foreground">
+                Lng: {location.longitude.toFixed(6)}
+              </div>
+              <div className="text-muted-foreground">
+                Updated: {new Date(location.timestamp).toLocaleTimeString()}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Zone Entry Notification */}
+      {showZoneNotification && currentZone && !showTokenInput && (
+        <div className="absolute bottom-24 left-4 right-4 z-30">
+          <Card className="p-4 bg-gradient-primary border-0 shadow-floating animate-fade-in">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-5 h-5 text-primary-foreground" />
+                <div className="text-primary-foreground">
+                  <p className="font-medium">You're in {currentZone.name}!</p>
+                  <p className="text-sm opacity-90">People are nearby</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => onEnterZone(currentZone.id)}
+                variant="secondary"
+                size="sm"
+                className="bg-background/20 text-primary-foreground border-0 hover:bg-background/30"
+              >
+                Start Swiping
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Location States */}
+      {!location && !locationLoading && locationError && !showTokenInput && (
+        <div className="absolute bottom-24 left-4 right-4 z-30">
+          <Card className="p-4 bg-destructive/10 border-destructive/20 shadow-floating">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+                <div>
+                  <p className="font-medium text-destructive">Location Access Needed</p>
+                  <p className="text-sm text-muted-foreground">Enable location to see your position on the real map</p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => getCurrentLocation()}
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
+              >
+                <MapIcon className="w-4 h-4 mr-2" />
+                Enable
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes pulse {
+            0% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            70% {
+              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+            }
+            100% {
+              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+            }
+          }
+        `
+      }} />
+    </div>
+  );
+}
