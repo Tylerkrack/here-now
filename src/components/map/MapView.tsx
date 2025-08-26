@@ -36,6 +36,7 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
   const [showZoneNotification, setShowZoneNotification] = useState(false);
   const [currentZone, setCurrentZone] = useState<DisplayZone | null>(null);
   const [locationPermissionRequested, setLocationPermissionRequested] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1); // Add zoom control
   const [mapBounds, setMapBounds] = useState({
     north: 37.8,
     south: 37.7,
@@ -154,6 +155,10 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
     }
   };
 
+  // Handle zoom controls
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.5, 3));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.5, 0.5));
+
   // Handle location permission request
   const handleRequestLocation = () => {
     getCurrentLocation().catch(() => {
@@ -192,22 +197,76 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
         </Button>
       </div>
 
-      {/* Map Background - Minimal design */}
-      <div className="absolute inset-0 bg-gradient-to-br from-muted/10 to-muted/30">
-        {/* Simple grid pattern */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="h-full w-full" style={{
-            backgroundImage: `
-              linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
-              linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
-            `,
-            backgroundSize: '40px 40px'
-          }} />
+      {/* Interactive Map with Buildings */}
+      <div 
+        className="absolute inset-0 transition-transform duration-300 ease-out"
+        style={{ 
+          transform: `scale(${zoomLevel})`,
+          transformOrigin: 'center center'
+        }}
+      >
+        {/* Street Grid */}
+        <div className="absolute inset-0">
+          {/* Major Streets */}
+          <div className="absolute w-full h-2 bg-border/40" style={{ top: '20%' }} />
+          <div className="absolute w-full h-2 bg-border/40" style={{ top: '40%' }} />
+          <div className="absolute w-full h-2 bg-border/40" style={{ top: '60%' }} />
+          <div className="absolute w-full h-2 bg-border/40" style={{ top: '80%' }} />
+          
+          <div className="absolute h-full w-2 bg-border/40" style={{ left: '15%' }} />
+          <div className="absolute h-full w-2 bg-border/40" style={{ left: '35%' }} />
+          <div className="absolute h-full w-2 bg-border/40" style={{ left: '55%' }} />
+          <div className="absolute h-full w-2 bg-border/40" style={{ left: '75%' }} />
+        </div>
+
+        {/* Buildings and Landmarks */}
+        <div className="absolute inset-0">
+          {/* Office Buildings */}
+          <div className="absolute bg-muted/60 rounded shadow-sm" style={{ left: '25%', top: '25%', width: '8%', height: '12%' }}>
+            <div className="absolute inset-1 bg-muted/80 rounded-sm" />
+          </div>
+          <div className="absolute bg-muted/60 rounded shadow-sm" style={{ left: '45%', top: '15%', width: '6%', height: '18%' }}>
+            <div className="absolute inset-1 bg-muted/80 rounded-sm" />
+          </div>
+          <div className="absolute bg-muted/60 rounded shadow-sm" style={{ left: '65%', top: '25%', width: '7%', height: '15%' }}>
+            <div className="absolute inset-1 bg-muted/80 rounded-sm" />
+          </div>
+
+          {/* Shopping Centers */}
+          <div className="absolute bg-primary/20 rounded shadow-sm" style={{ left: '20%', top: '45%', width: '12%', height: '8%' }}>
+            <div className="absolute inset-1 bg-primary/30 rounded-sm" />
+          </div>
+          <div className="absolute bg-primary/20 rounded shadow-sm" style={{ left: '60%', top: '65%', width: '10%', height: '6%' }}>
+            <div className="absolute inset-1 bg-primary/30 rounded-sm" />
+          </div>
+
+          {/* Parks */}
+          <div className="absolute bg-friendship/30 rounded-lg shadow-sm" style={{ left: '10%', top: '70%', width: '15%', height: '20%' }}>
+            <div className="absolute inset-2 bg-friendship/40 rounded-lg" />
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-friendship/60 rounded-full" />
+          </div>
+          <div className="absolute bg-friendship/30 rounded-lg shadow-sm" style={{ left: '80%', top: '10%', width: '12%', height: '15%' }}>
+            <div className="absolute inset-2 bg-friendship/40 rounded-lg" />
+          </div>
+
+          {/* Residential Areas */}
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute bg-muted/40 rounded shadow-sm"
+              style={{
+                left: `${10 + (i % 4) * 20}%`,
+                top: `${50 + Math.floor(i / 4) * 15}%`,
+                width: `${4 + Math.random() * 3}%`,
+                height: `${4 + Math.random() * 3}%`,
+              }}
+            />
+          ))}
         </div>
         
         {/* Location Debug Info */}
         {location && (
-          <div className="absolute top-20 right-4 z-30">
+          <div className="absolute top-4 right-4 z-30">
             <Card className="p-3 bg-background/90 backdrop-blur-sm shadow-card">
               <div className="text-xs space-y-1">
                 <div className="font-medium text-primary">📍 Your Location</div>
@@ -224,80 +283,100 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
             </Card>
           </div>
         )}
-      </div>
 
-      {/* Zones as circular areas */}
-      {displayZones.map((zone) => {
-        const Icon = getZoneIcon(zone.type);
-        const radiusPercent = Math.min(8, Math.max(3, (zone.radius_meters / 500) * 5)); // Convert to screen percentage
-        
-        return (
-          <div key={zone.id} className="absolute">
-            {/* Zone circle */}
-            <div
-              className={`absolute transform -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500 ${
-                zone.isActive
-                  ? zone.isUserInside
-                    ? "bg-primary/40 border-2 border-primary animate-pulse"
-                    : "bg-primary/20 border border-primary/50 hover:bg-primary/30"
-                  : "bg-muted/20 border border-muted/40"
-              }`}
-              style={{
-                left: `${zone.position.x}%`,
-                top: `${zone.position.y}%`,
-                width: `${radiusPercent}%`,
-                height: `${radiusPercent}%`,
-              }}
-            />
-            
-            {/* Zone icon and label */}
-            <div
-              className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{
-                left: `${zone.position.x}%`,
-                top: `${zone.position.y}%`,
-              }}
-            >
-              <div className={`text-center transition-all duration-300 ${
-                zone.isUserInside ? "scale-110" : "scale-100"
-              }`}>
-                <div className={`flex flex-col items-center space-y-1`}>
-                  <Icon className={`w-4 h-4 ${
-                    zone.isActive 
-                      ? zone.isUserInside 
-                        ? "text-primary" 
-                        : "text-primary/70"
-                      : "text-muted-foreground"
-                  }`} />
-                  <div className={`text-xs font-medium px-2 py-1 rounded-full ${
-                    zone.isActive 
-                      ? zone.isUserInside 
-                        ? "bg-primary text-primary-foreground" 
-                        : "bg-background/80 text-foreground border border-primary/30"
-                      : "bg-muted/80 text-muted-foreground"
-                  } backdrop-blur-sm`}>
-                    {zone.name}
+        {/* Zones as circular areas */}
+        {displayZones.map((zone) => {
+          const Icon = getZoneIcon(zone.type);
+          const radiusPercent = Math.min(8, Math.max(3, (zone.radius_meters / 500) * 5 * zoomLevel)); // Scale with zoom
+          
+          return (
+            <div key={zone.id} className="absolute">
+              {/* Zone circle */}
+              <div
+                className={`absolute transform -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500 ${
+                  zone.isActive
+                    ? zone.isUserInside
+                      ? "bg-primary/40 border-2 border-primary animate-pulse"
+                      : "bg-primary/20 border border-primary/50 hover:bg-primary/30"
+                    : "bg-muted/20 border border-muted/40"
+                }`}
+                style={{
+                  left: `${zone.position.x}%`,
+                  top: `${zone.position.y}%`,
+                  width: `${radiusPercent}%`,
+                  height: `${radiusPercent}%`,
+                }}
+              />
+              
+              {/* Zone icon and label */}
+              <div
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{
+                  left: `${zone.position.x}%`,
+                  top: `${zone.position.y}%`,
+                }}
+              >
+                <div className={`text-center transition-all duration-300 ${
+                  zone.isUserInside ? "scale-110" : "scale-100"
+                }`}>
+                  <div className={`flex flex-col items-center space-y-1`}>
+                    <Icon className={`w-4 h-4 ${
+                      zone.isActive 
+                        ? zone.isUserInside 
+                          ? "text-primary" 
+                          : "text-primary/70"
+                        : "text-muted-foreground"
+                    }`} />
+                    <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                      zone.isActive 
+                        ? zone.isUserInside 
+                          ? "bg-primary text-primary-foreground" 
+                          : "bg-background/80 text-foreground border border-primary/30"
+                        : "bg-muted/80 text-muted-foreground"
+                    } backdrop-blur-sm`}>
+                      {zone.name}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
 
-      {/* User Position */}
-      <div
-        className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
-        style={{
-          left: `${userPosition.x}%`,
-          top: `${userPosition.y}%`,
-        }}
-      >
-        <div className="relative">
-          <div className="w-4 h-4 bg-primary rounded-full border-2 border-background shadow-card animate-pulse">
+        {/* User Position */}
+        <div
+          className="absolute transform -translate-x-1/2 -translate-y-1/2 z-20"
+          style={{
+            left: `${userPosition.x}%`,
+            top: `${userPosition.y}%`,
+          }}
+        >
+          <div className="relative">
+            <div className="w-4 h-4 bg-primary rounded-full border-2 border-background shadow-card animate-pulse">
+            </div>
+            <div className="absolute inset-0 bg-primary/30 rounded-full animate-ping"></div>
           </div>
-          <div className="absolute inset-0 bg-primary/30 rounded-full animate-ping"></div>
         </div>
+      </div>
+
+      {/* Zoom Controls */}
+      <div className="absolute bottom-24 right-4 z-30 flex flex-col space-y-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleZoomIn}
+          className="bg-background/80 backdrop-blur-sm shadow-card"
+        >
+          <span className="text-lg font-bold">+</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleZoomOut}
+          className="bg-background/80 backdrop-blur-sm shadow-card"
+        >
+          <span className="text-lg font-bold">-</span>
+        </Button>
       </div>
 
       {/* Location Error/Loading States */}
