@@ -95,7 +95,7 @@ const Auth = () => {
           <div className="flex justify-center mb-4">
             <AppLogo size="lg" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Radius</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Here Now</CardTitle>
           <CardDescription>
             Find meaningful connections in your neighborhood
           </CardDescription>
