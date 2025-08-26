@@ -131,8 +131,8 @@ const Index = () => {
       return;
     }
 
-    // Check if user has completed onboarding (has profile)
-    if (profile && profile.display_name) {
+    // Check if user has completed onboarding (has complete profile)
+    if (profile && profile.display_name && profile.bio && profile.photos.length > 0 && profile.intent) {
       setAppState("map");
     } else {
       // Simulate loading time then show onboarding

@@ -23,7 +23,7 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -41,10 +41,28 @@ const Auth = () => {
           description: error.message,
           variant: "destructive"
         });
-      } else {
+      } else if (data.user) {
+        // Create basic profile entry
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: data.user.id,
+            display_name: displayName,
+            age: parseInt(age),
+            bio: null,
+            photos: [],
+            interests: [],
+            intent: null,
+            is_active: false // Not active until profile is completed
+          });
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+
         toast({
           title: "Success!",
-          description: "Please check your email to verify your account"
+          description: "Please check your email to verify your account, then complete your profile"
         });
       }
     } catch (error: any) {
