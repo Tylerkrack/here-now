@@ -80,9 +80,9 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12', // Real street map
-      center: [-122.4194, 37.7749], // Default to San Francisco
-      zoom: 13,
-      pitch: 45, // 3D-like view
+      center: [-96.0, 39.5], // Center of USA to show both coasts
+      zoom: 4, // Zoomed out to see multiple states
+      pitch: 0, // Flat view for better zone visibility
     });
 
     // Add navigation controls
