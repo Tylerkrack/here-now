@@ -136,13 +136,15 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     const userEl = document.createElement('div');
     userEl.className = 'user-marker';
     userEl.style.cssText = `
-      width: 20px;
-      height: 20px;
+      width: 30px;
+      height: 30px;
       background: #3b82f6;
-      border: 3px solid white;
+      border: 4px solid white;
       border-radius: 50%;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
       animation: pulse 2s infinite;
+      z-index: 1000;
+      transform: translate(-50%, -50%);
     `;
 
     userMarker.current = new mapboxgl.Marker(userEl)
