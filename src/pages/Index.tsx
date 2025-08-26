@@ -55,7 +55,7 @@ const Index = () => {
   });
 
   // Database hooks
-  const { profile, refetch: refetchProfile } = useProfile();
+  const { profile, error, refetch: refetchProfile } = useProfile();
   const { zones } = useZones();
   const { matches } = useMatches();
   const { profiles: swipeProfiles, recordSwipe } = useProfilesToSwipe(currentZone?.id);
@@ -190,6 +190,17 @@ const Index = () => {
     if (!user) {
       navigate('/auth');
       return;
+    }
+    
+    // If user exists but no profile and profile loading is complete, 
+    // they need to go through onboarding (don't sign them out immediately)
+    if (user && !profile && !loading && error) {
+      console.log('User exists but profile fetch failed, might need cleanup');
+      // Only sign out if there's an actual error, not just missing profile
+      if (error.includes('does not exist') || error.includes('not found')) {
+        supabase.auth.signOut();
+        return;
+      }
     }
     
 
