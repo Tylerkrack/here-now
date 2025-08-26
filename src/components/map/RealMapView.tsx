@@ -176,74 +176,96 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     console.log('✅ User location marker added');
   }, [location, getCurrentLocation, locationLoading, locationError]);
 
-  // Add zones to map and fit bounds
+  // Add zones as actual circles, not markers
   useEffect(() => {
     if (!map.current || !dbZones.length) {
       console.log('🔍 Zones check failed:', { mapReady: !!map.current, zonesCount: dbZones.length });
       return;
     }
 
-    console.log('🎯 Adding zones to map:', dbZones.length);
+    console.log('🎯 Adding zones as circles to map:', dbZones.length);
 
-    // Clear existing zone markers
-    zoneMarkers.current.forEach(marker => marker.remove());
-    zoneMarkers.current = [];
+    // Wait for map to be fully loaded
+    map.current.on('load', () => {
+      // Remove existing zone layers if they exist
+      if (map.current!.getLayer('zones-fill')) {
+        map.current!.removeLayer('zones-fill');
+      }
+      if (map.current!.getLayer('zones-outline')) {
+        map.current!.removeLayer('zones-outline');
+      }
+      if (map.current!.getSource('zones')) {
+        map.current!.removeSource('zones');
+      }
 
-    // Create bounds to fit all zones
-    const bounds = new mapboxgl.LngLatBounds();
+      // Create GeoJSON features for zones
+      const zoneFeatures = dbZones.map(zone => ({
+        type: 'Feature' as const,
+        properties: {
+          name: zone.name,
+          type: zone.zone_type,
+          radius: zone.radius_meters
+        },
+        geometry: {
+          type: 'Point' as const,
+          coordinates: [Number(zone.longitude), Number(zone.latitude)]
+        }
+      }));
 
-    dbZones.forEach((zone, index) => {
-      console.log(`🎯 Adding zone ${index + 1}:`, zone.name, zone.latitude, zone.longitude);
-
-      // Add to bounds
-      bounds.extend([Number(zone.longitude), Number(zone.latitude)]);
-
-      // Create zone marker with bright, large styling
-      const zoneEl = document.createElement('div');
-      zoneEl.style.cssText = `
-        width: 60px;
-        height: 60px;
-        background: #FF6B6B;
-        border: 5px solid white;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 30px;
-        box-shadow: 0 8px 30px rgba(255,107,107,0.8);
-        z-index: 1000;
-        cursor: pointer;
-        transform: scale(1);
-        transition: transform 0.2s ease;
-      `;
-      zoneEl.textContent = '🍸';
-      
-      // Add hover effect
-      zoneEl.addEventListener('mouseenter', () => {
-        zoneEl.style.transform = 'scale(1.2)';
-      });
-      zoneEl.addEventListener('mouseleave', () => {
-        zoneEl.style.transform = 'scale(1)';
+      // Add zones source
+      map.current!.addSource('zones', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: zoneFeatures
+        }
       });
 
-      const marker = new mapboxgl.Marker(zoneEl)
-        .setLngLat([Number(zone.longitude), Number(zone.latitude)])
-        .addTo(map.current!);
+      // Add zone circles (fill)
+      map.current!.addLayer({
+        id: 'zones-fill',
+        type: 'circle',
+        source: 'zones',
+        paint: {
+          'circle-radius': {
+            stops: [
+              [10, 5],
+              [15, 20],
+              [18, 50]
+            ]
+          },
+          'circle-color': '#8B5CF6',
+          'circle-opacity': 0.3
+        }
+      });
 
-      zoneMarkers.current.push(marker);
-      console.log(`✅ Zone ${index + 1} added successfully:`, zone.name);
+      // Add zone outlines
+      map.current!.addLayer({
+        id: 'zones-outline',
+        type: 'circle',
+        source: 'zones',
+        paint: {
+          'circle-radius': {
+            stops: [
+              [10, 5],
+              [15, 20],
+              [18, 50]
+            ]
+          },
+          'circle-color': '#8B5CF6',
+          'circle-stroke-width': 3,
+          'circle-stroke-color': '#FFFFFF',
+          'circle-opacity': 0
+        }
+      });
+
+      console.log('✅ Zone circles added to map');
     });
 
-    // Fit map to show all zones with padding
-    if (!bounds.isEmpty()) {
-      map.current.fitBounds(bounds, {
-        padding: 100,
-        maxZoom: 12
-      });
-      console.log('📍 Map fitted to show all zones');
+    // If map is already loaded, trigger the effect immediately
+    if (map.current.isStyleLoaded()) {
+      map.current.fire('load');
     }
-
-    console.log('🎯 Total zones added:', zoneMarkers.current.length);
   }, [dbZones]);
 
   return (
