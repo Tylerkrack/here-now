@@ -237,7 +237,11 @@ const Index = () => {
           photos: profile.photos,
           socialActivities: profile.interests,
           intents: profile.intent ? [profile.intent as Intent] : []
-        } : undefined}
+        } : {
+          email: user?.email || "",
+          name: user?.user_metadata?.display_name || "",
+          age: user?.user_metadata?.age || undefined
+        }}
       />
     );
   }
