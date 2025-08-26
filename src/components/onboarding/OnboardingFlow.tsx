@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
-import { Camera, ChevronRight, Upload } from "lucide-react";
+import { Camera, ChevronRight, Upload, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OnboardingData {
   email: string;
@@ -25,7 +27,9 @@ interface OnboardingFlowProps {
 }
 
 export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps) {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
+  const [uploading, setUploading] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     email: initialData?.email || "",
     name: initialData?.name || "",
@@ -58,6 +62,47 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
 
   const updateData = (updates: Partial<OnboardingData>) => {
     setData(prev => ({ ...prev, ...updates }));
+  };
+
+  const uploadPhoto = async (file: File, index: number) => {
+    if (!user) return;
+    
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${index}-${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error } = await supabase.storage
+        .from('user-photos')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-photos')
+        .getPublicUrl(fileName);
+
+      const newPhotos = [...data.photos];
+      newPhotos[index] = publicUrl;
+      updateData({ photos: newPhotos });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    const newPhotos = [...data.photos];
+    newPhotos[index] = "";
+    updateData({ photos: newPhotos.filter(photo => photo !== "") });
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadPhoto(file, index);
+    }
   };
 
   return (
@@ -123,19 +168,45 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
               <Label>Add Photos (minimum 2 required)</Label>
               <div className="grid grid-cols-3 gap-3 mt-2">
                 {[0, 1, 2].map((i) => (
-                  <div
-                    key={i}
-                    className="aspect-square rounded-lg border-2 border-dashed border-muted flex items-center justify-center bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors"
-                  >
-                    {data.photos[i] ? (
-                      <img
-                        src={data.photos[i]}
-                        alt={`Photo ${i + 1}`}
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : (
-                      <Camera className="w-8 h-8 text-muted-foreground" />
-                    )}
+                  <div key={i} className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleFileSelect(e, i)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      id={`photo-${i}`}
+                    />
+                    <div className="aspect-square rounded-lg border-2 border-dashed border-muted flex items-center justify-center bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors relative">
+                      {data.photos[i] ? (
+                        <>
+                          <img
+                            src={data.photos[i]}
+                            alt={`Photo ${i + 1}`}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              removePhoto(i);
+                            }}
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/80 z-20"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : uploading ? (
+                        <div className="flex flex-col items-center">
+                          <Upload className="w-6 h-6 text-muted-foreground animate-pulse" />
+                          <span className="text-xs text-muted-foreground mt-1">Uploading...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center">
+                          <Camera className="w-8 h-8 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground mt-1">Add Photo</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
