@@ -187,19 +187,110 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     zoneMarkers.current = [];
 
     dbZones.forEach(zone => {
+      console.log('Processing zone:', zone);
+      
+      // Add a circle layer to show the zone radius
+      const zoneId = `zone-${zone.id}`;
+      
+      // Add source for the zone circle
+      if (!map.current!.getSource(zoneId)) {
+        map.current!.addSource(zoneId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [Number(zone.longitude), Number(zone.latitude)]
+            },
+            properties: {
+              radius: zone.radius_meters || 100
+            }
+          }
+        });
+
+        // Add circle layer for zone area
+        map.current!.addLayer({
+          id: `${zoneId}-circle`,
+          type: 'circle',
+          source: zoneId,
+          paint: {
+            'circle-radius': {
+              type: 'exponential',
+              base: 2,
+              stops: [
+                [10, 10],
+                [15, zone.radius_meters ? zone.radius_meters / 10 : 10],
+                [20, zone.radius_meters ? zone.radius_meters / 5 : 20]
+              ]
+            },
+            'circle-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
+                           zone.zone_type === 'restaurant' ? '#EF4444' :
+                           zone.zone_type === 'cafe' ? '#F59E0B' :
+                           zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
+            'circle-opacity': 0.3,
+            'circle-stroke-width': 2,
+            'circle-stroke-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
+                                   zone.zone_type === 'restaurant' ? '#EF4444' :
+                                   zone.zone_type === 'cafe' ? '#F59E0B' :
+                                   zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
+            'circle-stroke-opacity': 0.8
+          }
+        });
+
+        // Add click handler for the zone
+        map.current!.on('click', `${zoneId}-circle`, (e) => {
+          console.log('Zone clicked:', zone);
+          
+          // Create popup
+          const popup = new mapboxgl.Popup({ 
+            offset: 25,
+            closeButton: true
+          }).setHTML(`
+            <div class="p-3 min-w-[200px]">
+              <h3 class="font-bold text-lg">${zone.name}</h3>
+              <p class="text-sm text-gray-600 capitalize">${zone.zone_type}</p>
+              <p class="text-xs text-gray-500">Radius: ${zone.radius_meters}m</p>
+              <button 
+                onclick="window.dispatchEvent(new CustomEvent('enterZone', { detail: '${zone.id}' }))"
+                class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+              >
+                Enter Zone
+              </button>
+            </div>
+          `);
+          
+          popup.setLngLat([Number(zone.longitude), Number(zone.latitude)]).addTo(map.current!);
+        });
+
+        // Change cursor to pointer when hovering over zone
+        map.current!.on('mouseenter', `${zoneId}-circle`, () => {
+          map.current!.getCanvas().style.cursor = 'pointer';
+        });
+
+        map.current!.on('mouseleave', `${zoneId}-circle`, () => {
+          map.current!.getCanvas().style.cursor = '';
+        });
+      }
+
+      // Add zone marker icon in the center
       const zoneEl = document.createElement('div');
       zoneEl.className = 'zone-marker';
       zoneEl.style.cssText = `
         width: 40px;
         height: 40px;
-        background: rgba(59, 130, 246, 0.2);
-        border: 2px solid #3b82f6;
+        background: white;
+        border: 3px solid ${zone.zone_type === 'bar' ? '#8B5CF6' : 
+                            zone.zone_type === 'restaurant' ? '#EF4444' :
+                            zone.zone_type === 'cafe' ? '#F59E0B' :
+                            zone.zone_type === 'park' ? '#10B981' : '#3B82F6'};
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 18px;
+        font-size: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        z-index: 1000;
       `;
       
       // Add zone type icon
@@ -208,7 +299,8 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         restaurant: '🍽️',
         bar: '🍸',
         office: '🏢',
-        park: '🌳'
+        park: '🌳',
+        gym: '💪'
       };
       zoneEl.textContent = icons[zone.zone_type] || '📍';
 
@@ -216,19 +308,6 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         .setLngLat([Number(zone.longitude), Number(zone.latitude)])
         .addTo(map.current!);
 
-      // Add popup with zone info
-      const popup = new mapboxgl.Popup({ 
-        offset: 25,
-        closeButton: false
-      }).setHTML(`
-        <div class="p-2">
-          <h3 class="font-bold">${zone.name}</h3>
-          <p class="text-sm text-gray-600">${zone.zone_type}</p>
-          <p class="text-xs">Radius: ${zone.radius_meters}m</p>
-        </div>
-      `);
-
-      marker.setPopup(popup);
       zoneMarkers.current.push(marker);
     });
   }, [dbZones]);
@@ -272,6 +351,19 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       setShowZoneNotification(false);
     }
   }, [location, dbZones, user, isInZone, currentZone]);
+
+  // Listen for zone entry events from popup buttons
+  useEffect(() => {
+    const handleEnterZone = (event: CustomEvent) => {
+      onEnterZone(event.detail);
+    };
+
+    window.addEventListener('enterZone', handleEnterZone as EventListener);
+    
+    return () => {
+      window.removeEventListener('enterZone', handleEnterZone as EventListener);
+    };
+  }, [onEnterZone]);
 
   return (
     <div className="relative h-screen bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden">
