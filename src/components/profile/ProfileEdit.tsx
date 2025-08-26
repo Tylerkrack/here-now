@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
-import { ArrowLeft, Camera, Save } from "lucide-react";
+import { ArrowLeft, Camera, Save, X, Upload } from "lucide-react";
 import AppLogo from "@/components/ui/app-logo";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ProfileData {
   name: string;
@@ -26,19 +28,62 @@ interface ProfileEditProps {
 }
 
 export function ProfileEdit({ profile, onSave, onBack }: ProfileEditProps) {
+  const { user } = useAuth();
   const [editedProfile, setEditedProfile] = useState<ProfileData>(profile);
   const [hasChanges, setHasChanges] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const socialActivitiesOptions = [
-    "Coffee dates", "Wine tasting", "Live music", "Art galleries", 
-    "Hiking", "Beach days", "Food festivals", "Networking events",
-    "Book clubs", "Dancing", "Cooking classes", "Yoga", "Gaming",
-    "Photography", "Travel", "Sports", "Museums", "Theater"
+    "Happy hours", "Rooftop bars", "Live music venues", "Art gallery openings", 
+    "Networking events", "Food festivals", "Beach clubs", "Wine tastings",
+    "Outdoor markets", "Comedy shows", "Dance clubs", "Coffee shop meetups",
+    "Fitness classes", "Popup events", "Game nights", "Trivia nights"
   ];
 
   const updateProfile = (updates: Partial<ProfileData>) => {
     setEditedProfile(prev => ({ ...prev, ...updates }));
     setHasChanges(true);
+  };
+
+  const uploadPhoto = async (file: File, index: number) => {
+    if (!user) return;
+    
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${index}-${Date.now()}.${fileExt}`;
+      
+      const { data: uploadData, error } = await supabase.storage
+        .from('user-photos')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('user-photos')
+        .getPublicUrl(fileName);
+
+      const newPhotos = [...editedProfile.photos];
+      newPhotos[index] = publicUrl;
+      updateProfile({ photos: newPhotos });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    const newPhotos = [...editedProfile.photos];
+    newPhotos[index] = "";
+    updateProfile({ photos: newPhotos.filter(photo => photo !== "") });
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadPhoto(file, index);
+    }
   };
 
   const handleSave = () => {
@@ -75,19 +120,45 @@ export function ProfileEdit({ profile, onSave, onBack }: ProfileEditProps) {
           <Label className="text-base font-medium mb-3 block">Photos</Label>
           <div className="grid grid-cols-3 gap-3">
             {[0, 1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="aspect-square rounded-lg border-2 border-dashed border-muted flex items-center justify-center bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors"
-              >
-                {editedProfile.photos[i] ? (
-                  <img
-                    src={editedProfile.photos[i]}
-                    alt={`Photo ${i + 1}`}
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <Camera className="w-6 h-6 text-muted-foreground" />
-                )}
+              <div key={i} className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileSelect(e, i)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  id={`profile-photo-${i}`}
+                />
+                <div className="aspect-square rounded-lg border-2 border-dashed border-muted flex items-center justify-center bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors relative">
+                  {editedProfile.photos[i] ? (
+                    <>
+                      <img
+                        src={editedProfile.photos[i]}
+                        alt={`Photo ${i + 1}`}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          removePhoto(i);
+                        }}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/80 z-20"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : uploading ? (
+                    <div className="flex flex-col items-center">
+                      <Upload className="w-5 h-5 text-muted-foreground animate-pulse" />
+                      <span className="text-xs text-muted-foreground mt-1">Uploading...</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <Camera className="w-6 h-6 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground mt-1">Add Photo</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>

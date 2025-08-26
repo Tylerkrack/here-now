@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/hooks/useProfile";
+import { supabase } from "@/integrations/supabase/client";
 import { useZones } from "@/hooks/useZones";
 import { useProfilesToSwipe } from "@/hooks/useSwipe";
 import { useMatches } from "@/hooks/useMatches";
@@ -59,7 +60,40 @@ const Index = () => {
   const { matches } = useMatches();
   const { profiles: swipeProfiles, recordSwipe } = useProfilesToSwipe(currentZone?.id);
 
-  const handleOnboardingComplete = (data: any) => {
+  const handleOnboardingComplete = async (data: any) => {
+    if (!user) return;
+    
+    // Save profile data to database
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    const profileData = {
+      user_id: user.id,
+      display_name: data.name,
+      age: data.age,
+      bio: data.bio,
+      photos: data.photos,
+      interests: data.socialActivities,
+      intent: data.intents[0] || null, // Use first intent for now
+      is_active: true
+    };
+
+    if (existingProfile) {
+      // Update existing profile
+      await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('user_id', user.id);
+    } else {
+      // Create new profile
+      await supabase
+        .from('profiles')
+        .insert(profileData);
+    }
+    
     setAppState("map");
   };
 
@@ -245,9 +279,9 @@ const Index = () => {
         />
       )}
 
-      {appState === "profile" && (
+      {appState === "profile" && profile && (
         <ProfileEdit 
-          profile={profile ? {
+          profile={{
             name: profile.display_name,
             age: profile.age,
             bio: profile.bio || "",
@@ -259,9 +293,21 @@ const Index = () => {
               friendship: { min: 20, max: 40 },
               networking: { min: 25, max: 45 }
             }
-          } : undefined}
-          onSave={(updatedProfile) => {
-            console.log("Saving profile:", updatedProfile);
+          }}
+          onSave={async (updatedProfile) => {
+            // Update profile in database
+            await supabase
+              .from('profiles')
+              .update({
+                display_name: updatedProfile.name,
+                age: updatedProfile.age,
+                bio: updatedProfile.bio,
+                photos: updatedProfile.photos,
+                interests: updatedProfile.socialActivities,
+                intent: updatedProfile.intents[0] || null
+              })
+              .eq('user_id', user.id);
+            
             setAppState("map");
           }}
           onBack={() => setAppState("map")}
