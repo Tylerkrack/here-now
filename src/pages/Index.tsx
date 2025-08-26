@@ -191,6 +191,13 @@ const Index = () => {
       navigate('/auth');
       return;
     }
+    
+    // If user exists but no profile, they might be deleted - clear session
+    if (user && !profile && !loading) {
+      console.log('User exists but no profile found, clearing session');
+      supabase.auth.signOut();
+      return;
+    }
 
     // Check if user has completed onboarding
     // Minimum requirements: display_name and age (from signup) + at least one of bio/photos/intent
