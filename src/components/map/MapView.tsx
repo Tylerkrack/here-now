@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MapPin, Users, Settings, User, Coffee, Utensils, Music, Briefcase } from "lucide-react";
+import { MapPin, Users, Settings, User, Coffee, Utensils, Music, Briefcase, MapIcon, AlertCircle } from "lucide-react";
 import AppLogo from "@/components/ui/app-logo";
+import { useLocation } from "@/hooks/useLocation";
+import { useZones } from "@/hooks/useZones";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
-interface Zone {
+interface DisplayZone {
   id: string;
   name: string;
-  area: { x: number; y: number }[]; // Polygon points
+  position: { x: number; y: number }; // Screen coordinates
   isActive: boolean;
   isUserInside: boolean;
   type: "cafe" | "restaurant" | "bar" | "office" | "park";
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
 }
 
 interface MapViewProps {
@@ -20,64 +27,23 @@ interface MapViewProps {
 }
 
 export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewProps) {
-  const [zones, setZones] = useState<Zone[]>([
-    { 
-      id: "1", 
-      name: "Central Coffee District", 
-      area: [
-        { x: 40, y: 55 }, { x: 50, y: 55 }, { x: 50, y: 65 }, { x: 40, y: 65 }
-      ], 
-      isActive: true, 
-      isUserInside: false, 
-      type: "cafe" 
-    },
-    { 
-      id: "2", 
-      name: "Art District", 
-      area: [
-        { x: 60, y: 30 }, { x: 70, y: 30 }, { x: 70, y: 40 }, { x: 60, y: 40 }
-      ], 
-      isActive: true, 
-      isUserInside: false, 
-      type: "bar" 
-    },
-    { 
-      id: "3", 
-      name: "Marina Dining", 
-      area: [
-        { x: 25, y: 70 }, { x: 35, y: 70 }, { x: 35, y: 80 }, { x: 25, y: 80 }
-      ], 
-      isActive: false, 
-      isUserInside: false, 
-      type: "restaurant" 
-    },
-    { 
-      id: "4", 
-      name: "Tech Hub", 
-      area: [
-        { x: 70, y: 50 }, { x: 80, y: 50 }, { x: 80, y: 60 }, { x: 70, y: 60 }
-      ], 
-      isActive: true, 
-      isUserInside: false, 
-      type: "office" 
-    },
-    { 
-      id: "5", 
-      name: "University Park", 
-      area: [
-        { x: 50, y: 75 }, { x: 60, y: 75 }, { x: 60, y: 85 }, { x: 50, y: 85 }
-      ], 
-      isActive: true, 
-      isUserInside: false, 
-      type: "park" 
-    },
-  ]);
-
+  const { user } = useAuth();
+  const { location, error: locationError, loading: locationLoading, getCurrentLocation, isInZone } = useLocation();
+  const { zones: dbZones, loading: zonesLoading } = useZones();
+  
+  const [displayZones, setDisplayZones] = useState<DisplayZone[]>([]);
   const [userPosition, setUserPosition] = useState({ x: 50, y: 50 });
   const [showZoneNotification, setShowZoneNotification] = useState(false);
-  const [currentZone, setCurrentZone] = useState<Zone | null>(null);
+  const [currentZone, setCurrentZone] = useState<DisplayZone | null>(null);
+  const [locationPermissionRequested, setLocationPermissionRequested] = useState(false);
+  const [mapBounds, setMapBounds] = useState({
+    north: 37.8,
+    south: 37.7,
+    east: -122.3,
+    west: -122.5
+  });
 
-  const getZoneIcon = (type: Zone["type"]) => {
+  const getZoneIcon = (type: DisplayZone["type"]) => {
     switch (type) {
       case "cafe": return Coffee;
       case "restaurant": return Utensils;
@@ -87,43 +53,111 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
     }
   };
 
-  // Check if user is inside any zone
-  const isPointInPolygon = (point: { x: number; y: number }, polygon: { x: number; y: number }[]) => {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i].x, yi = polygon[i].y;
-      const xj = polygon[j].x, yj = polygon[j].y;
-      
-      if (((yi > point.y) !== (yj > point.y)) && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)) {
-        inside = !inside;
-      }
-    }
-    return inside;
+  // Convert lat/lng to screen coordinates
+  const latLngToScreen = (lat: number, lng: number) => {
+    const x = ((lng - mapBounds.west) / (mapBounds.east - mapBounds.west)) * 100;
+    const y = ((mapBounds.north - lat) / (mapBounds.north - mapBounds.south)) * 100;
+    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
   };
 
+  // Request location permission on component mount
   useEffect(() => {
-    // Check if user entered any zone
-    const enteredZone = zones.find(zone => 
-      zone.isActive && isPointInPolygon(userPosition, zone.area)
-    );
-    
-    if (enteredZone && !enteredZone.isUserInside) {
-      // User entered a new zone
-      setZones(prev => prev.map(z => ({ ...z, isUserInside: z.id === enteredZone.id })));
+    if (!locationPermissionRequested) {
+      setLocationPermissionRequested(true);
+      getCurrentLocation().catch(() => {
+        // Handle error silently, user can try again
+      });
+    }
+  }, [getCurrentLocation, locationPermissionRequested]);
+
+  // Convert database zones to display zones
+  useEffect(() => {
+    if (dbZones.length > 0) {
+      const convertedZones = dbZones.map(zone => ({
+        id: zone.id,
+        name: zone.name,
+        position: latLngToScreen(Number(zone.latitude), Number(zone.longitude)),
+        isActive: zone.is_active,
+        isUserInside: false,
+        type: zone.zone_type as DisplayZone["type"],
+        latitude: Number(zone.latitude),
+        longitude: Number(zone.longitude),
+        radius_meters: zone.radius_meters || 100
+      }));
+      setDisplayZones(convertedZones);
+      
+      // Update map bounds based on zones
+      if (convertedZones.length > 0) {
+        const lats = convertedZones.map(z => z.latitude);
+        const lngs = convertedZones.map(z => z.longitude);
+        const padding = 0.01; // Add some padding
+        setMapBounds({
+          north: Math.max(...lats) + padding,
+          south: Math.min(...lats) - padding,
+          east: Math.max(...lngs) + padding,
+          west: Math.min(...lngs) - padding
+        });
+      }
+    }
+  }, [dbZones]);
+
+  // Update user position when location changes
+  useEffect(() => {
+    if (location) {
+      const screenPos = latLngToScreen(location.latitude, location.longitude);
+      setUserPosition(screenPos);
+    }
+  }, [location, mapBounds]);
+
+  // Check if user is in any zone and update location
+  useEffect(() => {
+    if (!location || !user) return;
+
+    let enteredZone: DisplayZone | null = null;
+    const updatedZones = displayZones.map(zone => {
+      const isInside = isInZone(zone.latitude, zone.longitude, zone.radius_meters);
+      if (isInside && zone.isActive && !zone.isUserInside) {
+        enteredZone = { ...zone, isUserInside: true };
+      }
+      return { ...zone, isUserInside: isInside };
+    });
+
+    setDisplayZones(updatedZones);
+
+    if (enteredZone) {
       setCurrentZone(enteredZone);
       setShowZoneNotification(true);
-    } else if (!enteredZone) {
-      // User left all zones
-      setZones(prev => prev.map(z => ({ ...z, isUserInside: false })));
+      
+      // Record user location in database
+      supabase
+        .from('user_locations')
+        .insert({
+          user_id: user.id,
+          zone_id: enteredZone.id,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          entered_at: new Date().toISOString()
+        })
+        .then(({ error }) => {
+          if (error) console.error('Error recording location:', error);
+        });
+    } else if (!updatedZones.some(z => z.isUserInside)) {
       setCurrentZone(null);
       setShowZoneNotification(false);
     }
-  }, [userPosition]);
+  }, [location, displayZones, user, isInZone]);
 
   const handleStartSwiping = () => {
     if (currentZone) {
       onEnterZone(currentZone.id);
     }
+  };
+
+  // Handle location permission request
+  const handleRequestLocation = () => {
+    getCurrentLocation().catch(() => {
+      // Error handled by the hook
+    });
   };
 
   return (
@@ -194,46 +228,58 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
         <div className="absolute bg-friendship/20 rounded-lg" style={{ left: "10%", top: "20%", width: "15%", height: "12%" }} />
       </div>
 
-      {/* Zones as highlighted areas */}
-      {zones.map((zone) => {
-        const pathString = zone.area.map((point, index) => 
-          `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
-        ).join(' ') + ' Z';
+      {/* Zones as circular areas */}
+      {displayZones.map((zone) => {
+        const Icon = getZoneIcon(zone.type);
+        const radiusPercent = Math.min(8, Math.max(3, (zone.radius_meters / 500) * 5)); // Convert to screen percentage
         
         return (
-          <div key={zone.id} className="absolute inset-0">
-            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path
-                d={pathString}
-                className={`transition-all duration-500 ${
-                  zone.isActive
-                    ? zone.isUserInside
-                      ? "fill-primary/40 stroke-primary stroke-1"
-                      : "fill-primary/10 stroke-primary/30 stroke-1 hover:fill-primary/20"
-                    : "fill-muted/20 stroke-muted/40 stroke-1"
-                }`}
-              />
-            </svg>
+          <div key={zone.id} className="absolute">
+            {/* Zone circle */}
+            <div
+              className={`absolute transform -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-500 ${
+                zone.isActive
+                  ? zone.isUserInside
+                    ? "bg-primary/40 border-2 border-primary animate-pulse"
+                    : "bg-primary/20 border border-primary/50 hover:bg-primary/30"
+                  : "bg-muted/20 border border-muted/40"
+              }`}
+              style={{
+                left: `${zone.position.x}%`,
+                top: `${zone.position.y}%`,
+                width: `${radiusPercent}%`,
+                height: `${radiusPercent}%`,
+              }}
+            />
             
-            {/* Zone label */}
+            {/* Zone icon and label */}
             <div
               className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
               style={{
-                left: `${zone.area.reduce((sum, point) => sum + point.x, 0) / zone.area.length}%`,
-                top: `${zone.area.reduce((sum, point) => sum + point.y, 0) / zone.area.length}%`,
+                left: `${zone.position.x}%`,
+                top: `${zone.position.y}%`,
               }}
             >
               <div className={`text-center transition-all duration-300 ${
                 zone.isUserInside ? "scale-110" : "scale-100"
               }`}>
-                <div className={`text-xs font-medium px-2 py-1 rounded-full ${
-                  zone.isActive 
-                    ? zone.isUserInside 
-                      ? "bg-primary text-primary-foreground" 
-                      : "bg-background/80 text-foreground border border-primary/30"
-                    : "bg-muted/80 text-muted-foreground"
-                } backdrop-blur-sm`}>
-                  {zone.name}
+                <div className={`flex flex-col items-center space-y-1`}>
+                  <Icon className={`w-4 h-4 ${
+                    zone.isActive 
+                      ? zone.isUserInside 
+                        ? "text-primary" 
+                        : "text-primary/70"
+                      : "text-muted-foreground"
+                  }`} />
+                  <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                    zone.isActive 
+                      ? zone.isUserInside 
+                        ? "bg-primary text-primary-foreground" 
+                        : "bg-background/80 text-foreground border border-primary/30"
+                      : "bg-muted/80 text-muted-foreground"
+                  } backdrop-blur-sm`}>
+                    {zone.name}
+                  </div>
                 </div>
               </div>
             </div>
@@ -256,8 +302,48 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
         </div>
       </div>
 
+      {/* Location Error/Loading States */}
+      {!location && !locationLoading && locationError && (
+        <div className="absolute top-20 left-4 right-4 z-30">
+          <Card className="p-4 bg-destructive/10 border-destructive/20 shadow-floating">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="w-5 h-5 text-destructive" />
+                <div>
+                  <p className="font-medium text-destructive">Location Access Needed</p>
+                  <p className="text-sm text-muted-foreground">Enable location to discover nearby zones</p>
+                </div>
+              </div>
+              <Button 
+                onClick={handleRequestLocation}
+                variant="outline"
+                size="sm"
+                className="border-destructive/30 text-destructive hover:bg-destructive/10"
+              >
+                <MapIcon className="w-4 h-4 mr-2" />
+                Enable
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {locationLoading && (
+        <div className="absolute top-20 left-4 right-4 z-30">
+          <Card className="p-4 bg-background/80 backdrop-blur-sm shadow-floating">
+            <div className="flex items-center space-x-3">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <div>
+                <p className="font-medium">Getting your location...</p>
+                <p className="text-sm text-muted-foreground">This may take a few seconds</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Zone Entry Notification */}
-      {showZoneNotification && currentZone && (
+      {showZoneNotification && currentZone && location && (
         <div className="absolute top-20 left-4 right-4 z-30">
           <Card className="p-4 bg-gradient-primary border-0 shadow-floating animate-fade-in">
             <div className="flex items-center justify-between">
