@@ -21,19 +21,20 @@ interface OnboardingData {
 
 interface OnboardingFlowProps {
   onComplete: (data: OnboardingData) => void;
+  initialData?: Partial<OnboardingData>;
 }
 
-export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps) {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<OnboardingData>({
-    email: "",
-    name: "",
-    age: 25,
-    bio: "",
-    photos: [],
-    socialActivities: [],
-    intents: [],
-    ageRanges: {
+    email: initialData?.email || "",
+    name: initialData?.name || "",
+    age: initialData?.age || 25,
+    bio: initialData?.bio || "",
+    photos: initialData?.photos || [],
+    socialActivities: initialData?.socialActivities || [],
+    intents: initialData?.intents || [],
+    ageRanges: initialData?.ageRanges || {
       dating: { min: 22, max: 35 },
       networking: { min: 25, max: 50 },
       friendship: { min: 20, max: 45 }

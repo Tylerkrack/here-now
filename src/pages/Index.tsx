@@ -156,7 +156,20 @@ const Index = () => {
   }
 
   if (appState === "onboarding") {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+    return (
+      <OnboardingFlow 
+        onComplete={handleOnboardingComplete}
+        initialData={profile ? {
+          email: user?.email || "",
+          name: profile.display_name,
+          age: profile.age,
+          bio: profile.bio || "",
+          photos: profile.photos,
+          socialActivities: profile.interests,
+          intents: profile.intent ? [profile.intent as Intent] : []
+        } : undefined}
+      />
+    );
   }
 
   return (
