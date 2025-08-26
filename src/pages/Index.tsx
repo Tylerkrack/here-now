@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/hooks/useProfile";
+import { useZones } from "@/hooks/useZones";
+import { useProfilesToSwipe } from "@/hooks/useSwipe";
+import { useMatches } from "@/hooks/useMatches";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { MapView } from "@/components/map/MapView";
 import { SwipeDeck } from "@/components/swipe/SwipeDeck";
@@ -13,98 +17,28 @@ import { BottomNav } from "@/components/navigation/BottomNav";
 import LoadingScreen from "@/components/ui/loading-screen";
 import { type Intent } from "@/components/ui/intent-badge";
 
-// Mock data for demo
-const mockProfiles = [
-  {
-    id: "1",
-    name: "Sarah",
-    age: 28,
-    bio: "Love exploring new coffee shops and art galleries. Always up for a good conversation about books or travel!",
-    photos: [],
-    socialActivities: ["Coffee dates", "Art galleries", "Book clubs", "Travel"],
-    intents: ["dating", "friendship"] as Intent[],
-    distance: "0.2 km"
-  },
-  {
-    id: "2", 
-    name: "Alex",
-    age: 32,
-    bio: "Tech entrepreneur passionate about startups and innovation. Looking to connect with like-minded professionals.",
-    photos: [],
-    socialActivities: ["Networking events", "Wine tasting", "Hiking"],
-    intents: ["networking", "friendship"] as Intent[],
-    distance: "0.5 km"
-  },
-  {
-    id: "3",
-    name: "Maya",
-    age: 26,
-    bio: "Yoga instructor and food lover. Let's explore the city's best restaurants together!",
-    photos: [],
-    socialActivities: ["Yoga", "Food festivals", "Dancing", "Beach days"],
-    intents: ["dating", "friendship"] as Intent[],
-    distance: "0.3 km"
-  }
-];
-
-const mockMatches = [
-  {
-    id: "1",
-    name: "Sarah",
-    age: 28,
-    photo: "",
-    intents: ["dating", "friendship"] as Intent[],
-    status: "start_chat" as const,
-    unreadCount: 0
-  },
-  {
-    id: "2",
-    name: "Alex", 
-    age: 32,
-    photo: "",
-    intents: ["networking"] as Intent[],
-    status: "active_chat" as const,
-    lastMessage: {
-      content: "Would love to discuss that startup idea!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30),
-      isRead: false
-    },
-    unreadCount: 2
-  }
-];
-
-type AppState = 
-  | "loading"
-  | "onboarding"
-  | "map" 
-  | "swiping"
-  | "individual-chat"
-  | "matches"
-  | "profile"
-  | "settings";
+type AppState = "loading" | "onboarding" | "map" | "swiping" | "matches" | "chat" | "profile" | "settings";
 
 interface UserProfile {
-  email: string;
-  name: string;
+  displayName: string;
   age: number;
   bio: string;
   photos: string[];
-  socialActivities: string[];
-  intents: Intent[];
-  ageRanges: Record<Intent, { min: number; max: number }>;
+  interests: string[];
+  intent: string;
 }
 
 const Index = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  
+  // State
   const [appState, setAppState] = useState<AppState>("loading");
   const [activeTab, setActiveTab] = useState<"map" | "matches" | "profile">("map");
-  const [currentZone, setCurrentZone] = useState<string>("");
+  const [currentZone, setCurrentZone] = useState<{id: string; name: string} | null>(null);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [currentMatch, setCurrentMatch] = useState<any>(null);
-  const [currentChat, setCurrentChat] = useState<string>("");
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const [currentChat, setCurrentChat] = useState<any>(null);
   const [settings, setSettings] = useState({
     notifications: {
       zoneEntry: true,
@@ -119,27 +53,34 @@ const Index = () => {
     }
   });
 
+  // Database hooks
+  const { profile } = useProfile();
+  const { zones } = useZones();
+  const { matches } = useMatches();
+  const { profiles: swipeProfiles, recordSwipe } = useProfilesToSwipe(currentZone?.id);
+
   const handleOnboardingComplete = (data: any) => {
-    setUserProfile(data);
     setAppState("map");
   };
 
   const handleEnterZone = (zoneId: string) => {
-    setCurrentZone(zoneId);
+    const zone = zones.find(z => z.id === zoneId);
+    setCurrentZone(zone ? { id: zone.id, name: zone.name } : null);
     setAppState("swiping");
   };
 
-  const handleSwipe = (profileId: string, direction: "left" | "right") => {
-    if (direction === "right" && Math.random() > 0.3) {
-      // Simulate match
-      const profile = mockProfiles.find(p => p.id === profileId);
-      if (profile) {
+  const handleSwipe = async (profileId: string, direction: "left" | "right") => {
+    const result = await recordSwipe(profileId, direction);
+    
+    if (result?.isMatch) {
+      const swipedProfile = swipeProfiles.find(p => p.user_id === profileId);
+      if (swipedProfile) {
         setCurrentMatch({
-          id: profile.id,
-          name: profile.name,
-          age: profile.age,
-          photo: profile.photos[0] || "",
-          intents: profile.intents
+          id: profileId,
+          name: swipedProfile.display_name,
+          image: swipedProfile.photos[0] || "/placeholder.svg",
+          age: swipedProfile.age,
+          intents: swipedProfile.intent ? [swipedProfile.intent] : []
         });
         setShowMatchModal(true);
       }
@@ -148,8 +89,17 @@ const Index = () => {
 
   const handleChatNow = () => {
     setShowMatchModal(false);
-    setCurrentChat(currentMatch.id);
-    setAppState("individual-chat");
+    const match = matches.find(m => 
+      (m.user1_id === user?.id ? m.user2_id : m.user1_id) === currentMatch?.id
+    );
+    if (match) {
+      setCurrentChat({
+        id: match.id,
+        name: match.profile?.display_name || "Unknown User",
+        image: match.profile?.photos[0] || "/placeholder.svg"
+      });
+      setAppState("chat");
+    }
   };
 
   const handleChatLater = () => {
@@ -171,7 +121,7 @@ const Index = () => {
     }
   };
 
-  const unreadCount = mockMatches.reduce((sum, match) => sum + match.unreadCount, 0);
+  const unreadCount = matches.reduce((sum, match) => sum + (match.unread_count || 0), 0);
 
   useEffect(() => {
     if (loading) return;
@@ -181,12 +131,17 @@ const Index = () => {
       return;
     }
 
-    // Simulate loading time for authenticated users
-    const timer = setTimeout(() => {
-      setAppState("onboarding");
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, [user, loading, navigate]);
+    // Check if user has completed onboarding (has profile)
+    if (profile && profile.display_name) {
+      setAppState("map");
+    } else {
+      // Simulate loading time then show onboarding
+      const timer = setTimeout(() => {
+        setAppState("onboarding");
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, loading, navigate, profile]);
 
   if (loading || appState === "loading") {
     return <LoadingScreen />;
@@ -211,56 +166,87 @@ const Index = () => {
       )}
 
       {appState === "swiping" && (
-        <SwipeDeck
-          zoneName="Downtown Core"
-          profiles={mockProfiles}
+        <SwipeDeck 
+          zoneName={currentZone?.name || "Unknown Zone"}
+          profiles={swipeProfiles.map(p => ({
+            id: p.user_id,
+            name: p.display_name,
+            age: p.age,
+            bio: p.bio || "",
+            photos: p.photos,
+            socialActivities: p.interests,
+            intents: p.intent ? [p.intent as Intent] : [],
+            distance: p.distance || "0 km"
+          }))}
           onSwipe={handleSwipe}
           onBack={() => setAppState("map")}
         />
       )}
 
       {appState === "matches" && (
-        <div className="pt-4">
-          <div className="p-4 border-b">
-            <h1 className="text-2xl font-bold">Matches</h1>
-            <p className="text-muted-foreground">People who liked you back</p>
-          </div>
-          <MatchesList
-            matches={mockMatches}
-            onChatWith={(matchId) => {
-              setCurrentChat(matchId);
-              setAppState("individual-chat");
-            }}
-          />
-        </div>
-      )}
-
-
-      {appState === "individual-chat" && currentChat && (
-        <ChatScreen
-          match={mockMatches.find(m => m.id === currentChat)!}
-          messages={messages}
-          currentUserId="current-user"
-          onBack={() => setAppState("matches")}
-          onSendMessage={(content) => {
-            const newMessage = {
-              id: Date.now().toString(),
-              senderId: "current-user",
-              content,
-              timestamp: new Date(),
-              isRead: true
-            };
-            setMessages(prev => [...prev, newMessage]);
+        <MatchesList 
+          matches={matches.map(m => ({
+            id: m.id,
+            name: m.profile?.display_name || "Unknown User",
+            age: m.profile?.age || 0,
+            photo: m.profile?.photos[0] || "/placeholder.svg",
+            intents: [],
+            status: "start_chat" as const,
+            lastMessage: {
+              content: "Start a conversation!",
+              timestamp: new Date(m.matched_at),
+              isRead: false
+            },
+            unreadCount: m.unread_count || 0
+          }))}
+          onChatWith={(matchId) => {
+            const match = matches.find(m => m.id === matchId);
+            if (match) {
+              setCurrentChat({
+                id: match.id,
+                name: match.profile?.display_name || "Unknown User",
+                image: match.profile?.photos[0] || "/placeholder.svg"
+              });
+              setAppState("chat");
+            }
           }}
-          onBlock={() => console.log("Block user")}
-          onReport={() => console.log("Report user")}
         />
       )}
 
-      {appState === "profile" && userProfile && (
-        <ProfileEdit
-          profile={userProfile}
-          onSave={(profile) => setUserProfile({ ...profile, email: userProfile.email })}
+      {appState === "chat" && currentChat && (
+        <ChatScreen 
+          match={currentChat}
+          messages={[]} // TODO: Load messages using useMessages hook
+          currentUserId={user?.id || ""}
+          onBack={() => setAppState("matches")}
+          onSendMessage={(content) => {
+            console.log("Sending message:", content);
+            // TODO: Implement with useMessages hook
+          }}
+          onReport={() => console.log("Report user")}
+          onBlock={() => console.log("Block user")}
+        />
+      )}
+
+      {appState === "profile" && (
+        <ProfileEdit 
+          profile={profile ? {
+            name: profile.display_name,
+            age: profile.age,
+            bio: profile.bio || "",
+            photos: profile.photos,
+            socialActivities: profile.interests,
+            intents: profile.intent ? [profile.intent as Intent] : [],
+            ageRanges: {
+              dating: { min: 25, max: 35 },
+              friendship: { min: 20, max: 40 },
+              networking: { min: 25, max: 45 }
+            }
+          } : undefined}
+          onSave={(updatedProfile) => {
+            console.log("Saving profile:", updatedProfile);
+            setAppState("map");
+          }}
           onBack={() => setAppState("map")}
         />
       )}
@@ -269,14 +255,17 @@ const Index = () => {
         <SettingsScreen
           settings={settings}
           onUpdateSettings={setSettings}
-          onSignOut={() => console.log("Sign out")}
+          onSignOut={async () => {
+            await signOut();
+            navigate('/auth');
+          }}
           onDeleteAccount={() => console.log("Delete account")}
           onBack={() => setAppState("map")}
         />
       )}
 
       {/* Bottom Navigation */}
-      {!["onboarding", "swiping", "individual-chat", "profile", "settings"].includes(appState) && (
+      {!["onboarding", "swiping", "chat", "profile", "settings"].includes(appState) && (
         <BottomNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
