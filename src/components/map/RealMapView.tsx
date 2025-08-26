@@ -114,12 +114,20 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
 
   // Update user location on map and auto-request location
   useEffect(() => {
+    console.log('Location effect triggered:', { location, locationLoading, locationError });
+    
     // Auto-request location on map load for desktop users
     if (!location && !locationLoading && !locationError) {
+      console.log('Requesting location...');
       getCurrentLocation();
     }
     
-    if (!map.current || !location) return;
+    if (!map.current || !location) {
+      console.log('Map or location not ready:', { mapReady: !!map.current, locationReady: !!location });
+      return;
+    }
+
+    console.log('Moving map to user location:', location);
 
     // Move map to user location
     map.current.flyTo({
@@ -154,7 +162,14 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
 
   // Add zones to map
   useEffect(() => {
-    if (!map.current || !dbZones.length) return;
+    console.log('Zones effect triggered:', { mapReady: !!map.current, zonesCount: dbZones.length, dbZones });
+    
+    if (!map.current || !dbZones.length) {
+      console.log('Map not ready or no zones:', { mapReady: !!map.current, zonesCount: dbZones.length });
+      return;
+    }
+
+    console.log('Adding zones to map:', dbZones);
 
     // Clear existing zone markers
     zoneMarkers.current.forEach(marker => marker.remove());
