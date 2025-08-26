@@ -196,30 +196,78 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       .addTo(map.current);
   }, [location]);
 
-  // Add zones to map - SIMPLE APPROACH
+  // Add zones to map - WITH ACTUAL COVERAGE AREAS
   useEffect(() => {
     if (!map.current || !dbZones.length) return;
 
-    console.log('📍 Adding zones:', dbZones.length);
+    console.log('📍 Adding zones with coverage areas:', dbZones.length);
 
     // Clear existing zone markers
     zoneMarkers.current.forEach(marker => marker.remove());
     zoneMarkers.current = [];
 
     dbZones.forEach(zone => {
-      // Create simple large marker
+      console.log('Adding zone:', zone.name, 'radius:', zone.radius_meters);
+
+      // Add zone coverage circle using Mapbox GL circle layer
+      const zoneId = `zone-${zone.id}`;
+      
+      // Remove existing if present
+      if (map.current!.getLayer(zoneId)) {
+        map.current!.removeLayer(zoneId);
+      }
+      if (map.current!.getSource(zoneId)) {
+        map.current!.removeSource(zoneId);
+      }
+
+      // Add source for zone point
+      map.current!.addSource(zoneId, {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [Number(zone.longitude), Number(zone.latitude)]
+          },
+          properties: {}
+        }
+      });
+
+      // Add circle layer showing actual zone radius
+      map.current!.addLayer({
+        id: zoneId,
+        type: 'circle',
+        source: zoneId,
+        paint: {
+          'circle-radius': {
+            base: 1.75,
+            stops: [
+              [12, (zone.radius_meters || 100) * 0.05], // Smaller at low zoom
+              [20, (zone.radius_meters || 100) * 0.3]   // Larger at high zoom
+            ]
+          },
+          'circle-color': '#8B5CF6', // Purple for bars
+          'circle-opacity': 0.3,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#8B5CF6',
+          'circle-stroke-opacity': 0.8
+        }
+      });
+
+      // Add center marker with icon
       const zoneEl = document.createElement('div');
       zoneEl.style.cssText = `
-        width: 50px;
-        height: 50px;
-        background: #8B5CF6;
-        border: 3px solid white;
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 3px solid #8B5CF6;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: 20px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        z-index: 1000;
       `;
       zoneEl.textContent = '🍸';
 
@@ -228,10 +276,10 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         .addTo(map.current!);
 
       zoneMarkers.current.push(marker);
-      console.log('✅ Zone added:', zone.name);
+      console.log('✅ Zone added with coverage area:', zone.name);
     });
 
-    console.log('📍 Total zones on map:', zoneMarkers.current.length);
+    console.log('📍 Total zones with coverage areas:', zoneMarkers.current.length);
   }, [dbZones]);
 
   // Check for zone entry
