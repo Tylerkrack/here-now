@@ -24,6 +24,24 @@ export default {
 				ring: 'hsl(var(--ring))',
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
+				
+				// Intent-based colors
+				dating: {
+					DEFAULT: 'hsl(var(--dating))',
+					foreground: 'hsl(var(--dating-foreground))',
+					light: 'hsl(var(--dating-light))'
+				},
+				networking: {
+					DEFAULT: 'hsl(var(--networking))',
+					foreground: 'hsl(var(--networking-foreground))',
+					light: 'hsl(var(--networking-light))'
+				},
+				friendship: {
+					DEFAULT: 'hsl(var(--friendship))',
+					foreground: 'hsl(var(--friendship-foreground))',
+					light: 'hsl(var(--friendship-light))'
+				},
+				
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))'
@@ -64,9 +82,22 @@ export default {
 				}
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				lg: 'var(--radius-lg)',
+				md: 'var(--radius)',
+				sm: 'var(--radius-sm)'
+			},
+			backgroundImage: {
+				'gradient-dating': 'var(--gradient-dating)',
+				'gradient-networking': 'var(--gradient-networking)', 
+				'gradient-friendship': 'var(--gradient-friendship)',
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-card': 'var(--gradient-card)',
+				'gradient-zone': 'var(--gradient-zone)'
+			},
+			boxShadow: {
+				'card': 'var(--shadow-card)',
+				'elevated': 'var(--shadow-elevated)',
+				'floating': 'var(--shadow-floating)'
 			},
 			keyframes: {
 				'accordion-down': {

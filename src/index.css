@@ -2,41 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Social Discovery App Design System */
 
 @layer base {
   :root {
+    /* Base colors */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 220 13% 13%;
 
+    /* Card system */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 220 13% 13%;
 
+    /* Popovers */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 220 13% 13%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Intent-based color system */
+    --dating: 340 75% 55%;
+    --dating-foreground: 0 0% 100%;
+    --dating-light: 340 65% 92%;
+    
+    --networking: 217 91% 60%;
+    --networking-foreground: 0 0% 100%;
+    --networking-light: 217 85% 92%;
+    
+    --friendship: 142 71% 45%;
+    --friendship-foreground: 0 0% 100%;
+    --friendship-light: 142 65% 92%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Primary system (dating by default) */
+    --primary: 340 75% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Secondary system */
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 13%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Muted system */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Accent system */
+    --accent: 340 75% 55%;
+    --accent-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Destructive */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    /* Borders and inputs */
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 340 75% 55%;
+
+    /* Gradients */
+    --gradient-dating: linear-gradient(135deg, hsl(340 75% 55%), hsl(320 65% 65%));
+    --gradient-networking: linear-gradient(135deg, hsl(217 91% 60%), hsl(200 85% 70%));
+    --gradient-friendship: linear-gradient(135deg, hsl(142 71% 45%), hsl(130 65% 55%));
+    --gradient-primary: var(--gradient-dating);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 14% 98%));
+    --gradient-zone: linear-gradient(135deg, hsl(340 75% 55% / 0.1), hsl(217 91% 60% / 0.1));
+
+    /* Shadows */
+    --shadow-card: 0 4px 20px hsl(220 13% 13% / 0.1);
+    --shadow-elevated: 0 8px 32px hsl(220 13% 13% / 0.15);
+    --shadow-floating: 0 12px 40px hsl(220 13% 13% / 0.2);
+
+    /* Radius system */
+    --radius: 1rem;
+    --radius-sm: 0.75rem;
+    --radius-lg: 1.5rem;
 
     --sidebar-background: 0 0% 98%;
 
