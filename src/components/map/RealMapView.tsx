@@ -140,12 +140,32 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
 
     console.log('Moving map to user location:', location);
 
-    // Move map to user location
-    map.current.flyTo({
-      center: [location.longitude, location.latitude],
-      zoom: 15,
-      duration: 2000
-    });
+    // If we have zones, fit the map to show both user location and zones
+    if (dbZones.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      
+      // Add user location to bounds
+      bounds.extend([location.longitude, location.latitude]);
+      
+      // Add all zones to bounds
+      dbZones.forEach(zone => {
+        bounds.extend([Number(zone.longitude), Number(zone.latitude)]);
+      });
+      
+      // Fit map to show all locations with padding
+      map.current.fitBounds(bounds, {
+        padding: 100,
+        maxZoom: 12,
+        duration: 2000
+      });
+    } else {
+      // Move map to user location only
+      map.current.flyTo({
+        center: [location.longitude, location.latitude],
+        zoom: 15,
+        duration: 2000
+      });
+    }
 
     // Add or update user marker
     if (userMarker.current) {
@@ -187,110 +207,28 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     zoneMarkers.current = [];
 
     dbZones.forEach(zone => {
-      console.log('Processing zone:', zone);
+      console.log('Creating marker for zone:', zone.name, zone.latitude, zone.longitude);
       
-      // Add a circle layer to show the zone radius
-      const zoneId = `zone-${zone.id}`;
-      
-      // Add source for the zone circle
-      if (!map.current!.getSource(zoneId)) {
-        map.current!.addSource(zoneId, {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            geometry: {
-              type: 'Point',
-              coordinates: [Number(zone.longitude), Number(zone.latitude)]
-            },
-            properties: {
-              radius: zone.radius_meters || 100
-            }
-          }
-        });
-
-        // Add circle layer for zone area
-        map.current!.addLayer({
-          id: `${zoneId}-circle`,
-          type: 'circle',
-          source: zoneId,
-          paint: {
-            'circle-radius': {
-              type: 'exponential',
-              base: 2,
-              stops: [
-                [10, 10],
-                [15, zone.radius_meters ? zone.radius_meters / 10 : 10],
-                [20, zone.radius_meters ? zone.radius_meters / 5 : 20]
-              ]
-            },
-            'circle-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
-                           zone.zone_type === 'restaurant' ? '#EF4444' :
-                           zone.zone_type === 'cafe' ? '#F59E0B' :
-                           zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
-            'circle-opacity': 0.3,
-            'circle-stroke-width': 2,
-            'circle-stroke-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
-                                   zone.zone_type === 'restaurant' ? '#EF4444' :
-                                   zone.zone_type === 'cafe' ? '#F59E0B' :
-                                   zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
-            'circle-stroke-opacity': 0.8
-          }
-        });
-
-        // Add click handler for the zone
-        map.current!.on('click', `${zoneId}-circle`, (e) => {
-          console.log('Zone clicked:', zone);
-          
-          // Create popup
-          const popup = new mapboxgl.Popup({ 
-            offset: 25,
-            closeButton: true
-          }).setHTML(`
-            <div class="p-3 min-w-[200px]">
-              <h3 class="font-bold text-lg">${zone.name}</h3>
-              <p class="text-sm text-gray-600 capitalize">${zone.zone_type}</p>
-              <p class="text-xs text-gray-500">Radius: ${zone.radius_meters}m</p>
-              <button 
-                onclick="window.dispatchEvent(new CustomEvent('enterZone', { detail: '${zone.id}' }))"
-                class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-              >
-                Enter Zone
-              </button>
-            </div>
-          `);
-          
-          popup.setLngLat([Number(zone.longitude), Number(zone.latitude)]).addTo(map.current!);
-        });
-
-        // Change cursor to pointer when hovering over zone
-        map.current!.on('mouseenter', `${zoneId}-circle`, () => {
-          map.current!.getCanvas().style.cursor = 'pointer';
-        });
-
-        map.current!.on('mouseleave', `${zoneId}-circle`, () => {
-          map.current!.getCanvas().style.cursor = '';
-        });
-      }
-
-      // Add zone marker icon in the center
+      // Create a large, visible zone marker
       const zoneEl = document.createElement('div');
       zoneEl.className = 'zone-marker';
       zoneEl.style.cssText = `
-        width: 40px;
-        height: 40px;
-        background: white;
-        border: 3px solid ${zone.zone_type === 'bar' ? '#8B5CF6' : 
-                            zone.zone_type === 'restaurant' ? '#EF4444' :
-                            zone.zone_type === 'cafe' ? '#F59E0B' :
-                            zone.zone_type === 'park' ? '#10B981' : '#3B82F6'};
+        width: 60px;
+        height: 60px;
+        background: ${zone.zone_type === 'bar' ? '#8B5CF6' : 
+                     zone.zone_type === 'restaurant' ? '#EF4444' :
+                     zone.zone_type === 'cafe' ? '#F59E0B' :
+                     zone.zone_type === 'park' ? '#10B981' : '#3B82F6'};
+        border: 4px solid white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        font-size: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-size: 24px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         z-index: 1000;
+        animation: pulse 2s infinite;
       `;
       
       // Add zone type icon
@@ -304,12 +242,41 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       };
       zoneEl.textContent = icons[zone.zone_type] || '📍';
 
+      // Add click handler
+      zoneEl.addEventListener('click', () => {
+        console.log('Zone clicked:', zone.name);
+        onEnterZone(zone.id);
+      });
+
       const marker = new mapboxgl.Marker(zoneEl)
         .setLngLat([Number(zone.longitude), Number(zone.latitude)])
         .addTo(map.current!);
 
+      // Add popup with zone info
+      const popup = new mapboxgl.Popup({ 
+        offset: 30,
+        closeButton: true
+      }).setHTML(`
+        <div class="p-3 min-w-[200px]">
+          <h3 class="font-bold text-lg">${zone.name}</h3>
+          <p class="text-sm text-gray-600 capitalize">${zone.zone_type}</p>
+          <p class="text-xs text-gray-500 mb-2">Radius: ${zone.radius_meters}m</p>
+          <button 
+            onclick="document.dispatchEvent(new CustomEvent('zoneClick', { detail: '${zone.id}' }))"
+            class="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+          >
+            Enter Zone
+          </button>
+        </div>
+      `);
+
+      marker.setPopup(popup);
       zoneMarkers.current.push(marker);
+      
+      console.log('Zone marker created successfully for:', zone.name);
     });
+    
+    console.log('Total zone markers created:', zoneMarkers.current.length);
   }, [dbZones]);
 
   // Check for zone entry
@@ -550,6 +517,10 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
             100% {
               box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
             }
+          }
+          
+          .zone-marker {
+            animation: pulse 2s infinite !important;
           }
         `
       }} />
