@@ -42,9 +42,10 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
   });
 
   const socialActivitiesOptions = [
-    "Coffee dates", "Wine tasting", "Live music", "Art galleries", 
-    "Hiking", "Beach days", "Food festivals", "Networking events",
-    "Book clubs", "Dancing", "Cooking classes", "Yoga"
+    "Happy hours", "Rooftop bars", "Live music venues", "Art gallery openings", 
+    "Networking events", "Food festivals", "Beach clubs", "Wine tastings",
+    "Outdoor markets", "Comedy shows", "Dance clubs", "Coffee shop meetups",
+    "Fitness classes", "Popup events", "Game nights", "Trivia nights"
   ];
 
   const handleNext = () => {
@@ -119,7 +120,7 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
         {step === 2 && (
           <div className="space-y-4">
             <div>
-              <Label>Add Photos</Label>
+              <Label>Add Photos (minimum 2 required)</Label>
               <div className="grid grid-cols-3 gap-3 mt-2">
                 {[0, 1, 2].map((i) => (
                   <div
@@ -138,6 +139,11 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
                   </div>
                 ))}
               </div>
+              {data.photos.length < 2 && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  Please add at least 2 photos to continue
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="bio">Bio</Label>
@@ -155,7 +161,7 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
         {step === 3 && (
           <div className="space-y-4">
             <div>
-              <Label>Social Activities (Select your favorites)</Label>
+              <Label>Where do you like to hang out? (Select your favorites)</Label>
               <div className="grid grid-cols-2 gap-3 mt-2">
                 {socialActivitiesOptions.map((activity) => (
                   <div key={activity} className="flex items-center space-x-2">
@@ -261,6 +267,7 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
           className="w-full mt-6 bg-gradient-primary border-0"
           disabled={
             (step === 1 && (!data.email || !data.name)) ||
+            (step === 2 && data.photos.length < 2) ||
             (step === 4 && data.intents.length === 0)
           }
         >
