@@ -4,7 +4,6 @@ import { MapView } from "@/components/map/MapView";
 import { SwipeDeck } from "@/components/swipe/SwipeDeck";
 import { MatchModal } from "@/components/match/MatchModal";
 import { ChatScreen } from "@/components/chat/ChatScreen";
-import { ChatList } from "@/components/chat/ChatList";
 import { MatchesList } from "@/components/matches/MatchesList";
 import { ProfileEdit } from "@/components/profile/ProfileEdit";
 import { SettingsScreen } from "@/components/settings/SettingsScreen";
@@ -71,31 +70,11 @@ const mockMatches = [
   }
 ];
 
-// Mock chat data with actual conversations
-const mockChats = [
-  {
-    id: "2",
-    name: "Alex",
-    age: 32,
-    photo: "",
-    intents: ["networking"] as Intent[],
-    lastMessage: {
-      content: "Would love to discuss that startup idea!",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30),
-      isRead: false,
-      senderId: "2"
-    },
-    unreadCount: 2,
-    isOnline: true
-  }
-];
-
 type AppState = 
   | "onboarding"
   | "map" 
   | "swiping"
   | "individual-chat"
-  | "chat-list"
   | "matches"
   | "profile"
   | "settings";
@@ -113,7 +92,7 @@ interface UserProfile {
 
 const Index = () => {
   const [appState, setAppState] = useState<AppState>("onboarding");
-  const [activeTab, setActiveTab] = useState<"map" | "matches" | "chat" | "profile">("map");
+  const [activeTab, setActiveTab] = useState<"map" | "matches" | "profile">("map");
   const [currentZone, setCurrentZone] = useState<string>("");
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [currentMatch, setCurrentMatch] = useState<any>(null);
@@ -171,7 +150,7 @@ const Index = () => {
     setShowMatchModal(false);
   };
 
-  const handleTabChange = (tab: "map" | "matches" | "chat" | "profile") => {
+  const handleTabChange = (tab: "map" | "matches" | "profile") => {
     setActiveTab(tab);
     switch (tab) {
       case "map":
@@ -179,9 +158,6 @@ const Index = () => {
         break;
       case "matches":
         setAppState("matches");
-        break;
-      case "chat":
-        setAppState("chat-list");
         break;
       case "profile":
         setAppState("profile");
@@ -230,30 +206,13 @@ const Index = () => {
         </div>
       )}
 
-      {appState === "chat-list" && (
-        <div className="pt-4 h-screen flex flex-col">
-          <div className="p-4 border-b">
-            <h1 className="text-2xl font-bold">Chat</h1>
-            <p className="text-muted-foreground">Your conversations</p>
-          </div>
-          <div className="flex-1">
-            <ChatList
-              chats={mockChats}
-              onChatWith={(chatId) => {
-                setCurrentChat(chatId);
-                setAppState("individual-chat");
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {appState === "individual-chat" && currentChat && (
         <ChatScreen
-          match={mockMatches.find(m => m.id === currentChat) || mockChats.find(c => c.id === currentChat)!}
+          match={mockMatches.find(m => m.id === currentChat)!}
           messages={messages}
           currentUserId="current-user"
-          onBack={() => setAppState(activeTab === "chat" ? "chat-list" : "matches")}
+          onBack={() => setAppState("matches")}
           onSendMessage={(content) => {
             const newMessage = {
               id: Date.now().toString(),

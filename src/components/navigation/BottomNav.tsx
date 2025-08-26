@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Map, Heart, MessageCircle, User } from "lucide-react";
+import { Map, Heart, User } from "lucide-react";
 
 interface BottomNavProps {
-  activeTab: "map" | "matches" | "chat" | "profile";
-  onTabChange: (tab: "map" | "matches" | "chat" | "profile") => void;
+  activeTab: "map" | "matches" | "profile";
+  onTabChange: (tab: "map" | "matches" | "profile") => void;
   unreadCount?: number;
 }
 
@@ -11,7 +11,6 @@ export function BottomNav({ activeTab, onTabChange, unreadCount = 0 }: BottomNav
   const tabs = [
     { id: "map" as const, label: "Discover", icon: Map },
     { id: "matches" as const, label: "Matches", icon: Heart },
-    { id: "chat" as const, label: "Chat", icon: MessageCircle },
     { id: "profile" as const, label: "Profile", icon: User },
   ];
 
@@ -33,7 +32,7 @@ export function BottomNav({ activeTab, onTabChange, unreadCount = 0 }: BottomNav
             >
               <div className="relative">
                 <Icon className="w-5 h-5" />
-                {tab.id === "chat" && unreadCount > 0 && (
+                {tab.id === "matches" && unreadCount > 0 && (
                   <div className="absolute -top-2 -right-2 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                     <span className="text-xs text-primary-foreground font-medium">
                       {unreadCount > 9 ? "9+" : unreadCount}
