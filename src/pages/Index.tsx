@@ -200,11 +200,8 @@ const Index = () => {
     if (hasBasicInfo && hasAdditionalInfo) {
       setAppState("map");
     } else {
-      // Show onboarding for new users or incomplete profiles
-      const timer = setTimeout(() => {
-        setAppState("onboarding");
-      }, 2000);
-      return () => clearTimeout(timer);
+      // Show onboarding immediately for users without profiles
+      setAppState("onboarding");
     }
   }, [user, loading, navigate, profile]);
 
