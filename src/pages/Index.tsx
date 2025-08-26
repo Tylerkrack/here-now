@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { MapView } from "@/components/map/MapView";
 import { SwipeDeck } from "@/components/swipe/SwipeDeck";
@@ -93,6 +95,8 @@ interface UserProfile {
 }
 
 const Index = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   const [appState, setAppState] = useState<AppState>("loading");
   const [activeTab, setActiveTab] = useState<"map" | "matches" | "profile">("map");
   const [currentZone, setCurrentZone] = useState<string>("");
@@ -170,15 +174,26 @@ const Index = () => {
   const unreadCount = mockMatches.reduce((sum, match) => sum + match.unreadCount, 0);
 
   useEffect(() => {
-    // Simulate loading time
+    if (loading) return;
+    
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+
+    // Simulate loading time for authenticated users
     const timer = setTimeout(() => {
       setAppState("onboarding");
     }, 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [user, loading, navigate]);
 
-  if (appState === "loading") {
+  if (loading || appState === "loading") {
     return <LoadingScreen />;
+  }
+
+  if (!user) {
+    return null; // Will redirect to auth
   }
 
   if (appState === "onboarding") {
