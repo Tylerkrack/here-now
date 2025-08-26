@@ -176,7 +176,7 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     console.log('✅ User location marker added');
   }, [location, getCurrentLocation, locationLoading, locationError]);
 
-  // Add zones to map - MINIMAL WORKING VERSION
+  // Add zones to map and fit bounds
   useEffect(() => {
     if (!map.current || !dbZones.length) {
       console.log('🔍 Zones check failed:', { mapReady: !!map.current, zonesCount: dbZones.length });
@@ -189,26 +189,42 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     zoneMarkers.current.forEach(marker => marker.remove());
     zoneMarkers.current = [];
 
+    // Create bounds to fit all zones
+    const bounds = new mapboxgl.LngLatBounds();
+
     dbZones.forEach((zone, index) => {
       console.log(`🎯 Adding zone ${index + 1}:`, zone.name, zone.latitude, zone.longitude);
 
-      // Create zone marker
+      // Add to bounds
+      bounds.extend([Number(zone.longitude), Number(zone.latitude)]);
+
+      // Create zone marker with bright, large styling
       const zoneEl = document.createElement('div');
       zoneEl.style.cssText = `
-        width: 50px;
-        height: 50px;
-        background: #8B5CF6;
-        border: 4px solid white;
+        width: 60px;
+        height: 60px;
+        background: #FF6B6B;
+        border: 5px solid white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        font-size: 30px;
+        box-shadow: 0 8px 30px rgba(255,107,107,0.8);
         z-index: 1000;
-        animation: pulse 2s infinite;
+        cursor: pointer;
+        transform: scale(1);
+        transition: transform 0.2s ease;
       `;
       zoneEl.textContent = '🍸';
+      
+      // Add hover effect
+      zoneEl.addEventListener('mouseenter', () => {
+        zoneEl.style.transform = 'scale(1.2)';
+      });
+      zoneEl.addEventListener('mouseleave', () => {
+        zoneEl.style.transform = 'scale(1)';
+      });
 
       const marker = new mapboxgl.Marker(zoneEl)
         .setLngLat([Number(zone.longitude), Number(zone.latitude)])
@@ -217,6 +233,15 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       zoneMarkers.current.push(marker);
       console.log(`✅ Zone ${index + 1} added successfully:`, zone.name);
     });
+
+    // Fit map to show all zones with padding
+    if (!bounds.isEmpty()) {
+      map.current.fitBounds(bounds, {
+        padding: 100,
+        maxZoom: 12
+      });
+      console.log('📍 Map fitted to show all zones');
+    }
 
     console.log('🎯 Total zones added:', zoneMarkers.current.length);
   }, [dbZones]);
