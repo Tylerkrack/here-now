@@ -4,6 +4,7 @@ import { MapView } from "@/components/map/MapView";
 import { SwipeDeck } from "@/components/swipe/SwipeDeck";
 import { MatchModal } from "@/components/match/MatchModal";
 import { ChatScreen } from "@/components/chat/ChatScreen";
+import { ChatList } from "@/components/chat/ChatList";
 import { MatchesList } from "@/components/matches/MatchesList";
 import { ProfileEdit } from "@/components/profile/ProfileEdit";
 import { SettingsScreen } from "@/components/settings/SettingsScreen";
@@ -70,11 +71,31 @@ const mockMatches = [
   }
 ];
 
+// Mock chat data with actual conversations
+const mockChats = [
+  {
+    id: "2",
+    name: "Alex",
+    age: 32,
+    photo: "",
+    intents: ["networking"] as Intent[],
+    lastMessage: {
+      content: "Would love to discuss that startup idea!",
+      timestamp: new Date(Date.now() - 1000 * 60 * 30),
+      isRead: false,
+      senderId: "2"
+    },
+    unreadCount: 2,
+    isOnline: true
+  }
+];
+
 type AppState = 
   | "onboarding"
   | "map" 
   | "swiping"
-  | "chat"
+  | "individual-chat"
+  | "chat-list"
   | "matches"
   | "profile"
   | "settings";
@@ -143,7 +164,7 @@ const Index = () => {
   const handleChatNow = () => {
     setShowMatchModal(false);
     setCurrentChat(currentMatch.id);
-    setAppState("chat");
+    setAppState("individual-chat");
   };
 
   const handleChatLater = () => {
@@ -160,7 +181,7 @@ const Index = () => {
         setAppState("matches");
         break;
       case "chat":
-        setAppState("matches"); // Show matches list for chat tab
+        setAppState("chat-list");
         break;
       case "profile":
         setAppState("profile");
@@ -203,18 +224,36 @@ const Index = () => {
             matches={mockMatches}
             onChatWith={(matchId) => {
               setCurrentChat(matchId);
-              setAppState("chat");
+              setAppState("individual-chat");
             }}
           />
         </div>
       )}
 
-      {appState === "chat" && currentChat && (
+      {appState === "chat-list" && (
+        <div className="pt-4 h-screen flex flex-col">
+          <div className="p-4 border-b">
+            <h1 className="text-2xl font-bold">Chat</h1>
+            <p className="text-muted-foreground">Your conversations</p>
+          </div>
+          <div className="flex-1">
+            <ChatList
+              chats={mockChats}
+              onChatWith={(chatId) => {
+                setCurrentChat(chatId);
+                setAppState("individual-chat");
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {appState === "individual-chat" && currentChat && (
         <ChatScreen
-          match={mockMatches.find(m => m.id === currentChat)!}
+          match={mockMatches.find(m => m.id === currentChat) || mockChats.find(c => c.id === currentChat)!}
           messages={messages}
           currentUserId="current-user"
-          onBack={() => setAppState("matches")}
+          onBack={() => setAppState(activeTab === "chat" ? "chat-list" : "matches")}
           onSendMessage={(content) => {
             const newMessage = {
               id: Date.now().toString(),
@@ -249,7 +288,7 @@ const Index = () => {
       )}
 
       {/* Bottom Navigation */}
-      {!["onboarding", "swiping", "chat", "profile", "settings"].includes(appState) && (
+      {!["onboarding", "swiping", "individual-chat", "profile", "settings"].includes(appState) && (
         <BottomNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
