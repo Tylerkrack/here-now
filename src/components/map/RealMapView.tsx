@@ -19,10 +19,21 @@ interface RealMapViewProps {
 }
 
 export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: RealMapViewProps) {
+  console.log('🗺️ RealMapView component mounted');
+  
   const { user } = useAuth();
   const { location, error: locationError, loading: locationLoading, getCurrentLocation, isInZone } = useLocation();
   const { zones: dbZones, loading: zonesLoading } = useZones();
   const { toast } = useToast();
+  
+  console.log('🗺️ RealMapView state:', { 
+    user: !!user, 
+    location: !!location, 
+    locationError, 
+    locationLoading, 
+    zonesCount: dbZones.length,
+    zonesLoading 
+  });
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
