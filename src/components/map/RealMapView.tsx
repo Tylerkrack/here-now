@@ -30,11 +30,48 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
   const zoneMarkers = useRef<mapboxgl.Marker[]>([]);
   
   const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [showTokenInput, setShowTokenInput] = useState(true);
+  const [showTokenInput, setShowTokenInput] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(true);
   const [currentZone, setCurrentZone] = useState<any>(null);
   const [showZoneNotification, setShowZoneNotification] = useState(false);
 
-  // Initialize map when token is provided
+  // Fetch Mapbox token from Supabase Edge Function
+  useEffect(() => {
+    const fetchMapboxToken = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+        
+        if (error) throw error;
+        
+        if (data?.token) {
+          setMapboxToken(data.token);
+          setTokenLoading(false);
+        } else {
+          throw new Error('No token received');
+        }
+      } catch (error) {
+        console.error('Error fetching Mapbox token:', error);
+        setShowTokenInput(true);
+        setTokenLoading(false);
+        toast({
+          title: "Mapbox Token Required",
+          description: "Please enter your Mapbox token manually",
+          variant: "destructive"
+        });
+      }
+    };
+
+    fetchMapboxToken();
+  }, []);
+
+  // Initialize map when token is available
+  // Auto-initialize map when token is available
+  useEffect(() => {
+    if (!mapContainer.current || !mapboxToken || showTokenInput) return;
+
+    initializeMap();
+  }, [mapboxToken, showTokenInput]);
+
   const initializeMap = () => {
     if (!mapContainer.current || !mapboxToken) return;
 
@@ -234,8 +271,23 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         </Button>
       </div>
 
+      {/* Loading State */}
+      {tokenLoading && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/90 backdrop-blur-sm">
+          <Card className="p-6 max-w-md w-full mx-4">
+            <div className="space-y-4 text-center">
+              <MapIcon className="w-12 h-12 mx-auto text-primary animate-pulse" />
+              <h2 className="text-xl font-bold">Loading Real Map</h2>
+              <p className="text-sm text-muted-foreground">
+                Fetching map configuration...
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Mapbox Token Input */}
-      {showTokenInput && (
+      {showTokenInput && !tokenLoading && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/90 backdrop-blur-sm">
           <Card className="p-6 max-w-md w-full mx-4">
             <div className="space-y-4">
