@@ -19,7 +19,7 @@ interface RealMapViewProps {
 }
 
 export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: RealMapViewProps) {
-  console.log('🗺️ RealMapView component mounted');
+  alert('🗺️ RealMapView component started');
   
   const { user } = useAuth();
   const { location, error: locationError, loading: locationLoading, getCurrentLocation, isInZone } = useLocation();
@@ -81,10 +81,10 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
   }, []);
 
   // Initialize map when token is available
-  // Auto-initialize map when token is available
   useEffect(() => {
     if (!mapContainer.current || !mapboxToken || showTokenInput) return;
 
+    console.log('🗺️ Initializing map...');
     initializeMap();
   }, [mapboxToken, showTokenInput]);
 
@@ -95,13 +95,12 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12', // Real street map
-      center: [-96.0, 39.5], // Center of USA to show both coasts
-      zoom: 4, // Zoomed out to see multiple states
-      pitch: 0, // Flat view for better zone visibility
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [-96.0, 39.5], // Center of USA
+      zoom: 4,
+      pitch: 0,
     });
 
-    // Add navigation controls
     map.current.addControl(
       new mapboxgl.NavigationControl({
         visualizePitch: true,
@@ -109,7 +108,6 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       'top-right'
     );
 
-    // Add geolocation control
     map.current.addControl(
       new mapboxgl.GeolocateControl({
         positionOptions: {
@@ -124,53 +122,34 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     setShowTokenInput(false);
     toast({
       title: "Map loaded!",
-      description: "Real map with streets and buildings is now active",
+      description: "Map is ready",
     });
+
+    console.log('✅ Map initialized successfully');
   };
 
-  // Update user location on map and auto-request location
+  // Update user location on map
   useEffect(() => {
-    console.log('Location effect triggered:', { location, locationLoading, locationError });
+    console.log('📍 Location effect triggered:', { location, locationLoading, locationError });
     
-    // Auto-request location on map load for desktop users
     if (!location && !locationLoading && !locationError) {
-      console.log('Requesting location...');
+      console.log('📍 Requesting location...');
       getCurrentLocation();
     }
     
     if (!map.current || !location) {
-      console.log('Map or location not ready:', { mapReady: !!map.current, locationReady: !!location });
+      console.log('📍 Map or location not ready:', { mapReady: !!map.current, locationReady: !!location });
       return;
     }
 
-    console.log('Moving map to user location:', location);
+    console.log('📍 Adding user location to map:', location);
 
-    // If we have zones, fit the map to show both user location and zones
-    if (dbZones.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      
-      // Add user location to bounds
-      bounds.extend([location.longitude, location.latitude]);
-      
-      // Add all zones to bounds
-      dbZones.forEach(zone => {
-        bounds.extend([Number(zone.longitude), Number(zone.latitude)]);
-      });
-      
-      // Fit map to show all locations with padding
-      map.current.fitBounds(bounds, {
-        padding: 100,
-        maxZoom: 12,
-        duration: 2000
-      });
-    } else {
-      // Move map to user location only
-      map.current.flyTo({
-        center: [location.longitude, location.latitude],
-        zoom: 15,
-        duration: 2000
-      });
-    }
+    // Move map to user location
+    map.current.flyTo({
+      center: [location.longitude, location.latitude],
+      zoom: 15,
+      duration: 2000
+    });
 
     // Add or update user marker
     if (userMarker.current) {
@@ -188,86 +167,46 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
       animation: pulse 2s infinite;
       z-index: 1000;
-      transform: translate(-50%, -50%);
     `;
 
     userMarker.current = new mapboxgl.Marker(userEl)
       .setLngLat([location.longitude, location.latitude])
       .addTo(map.current);
-  }, [location]);
 
-  // Add zones to map - WITH ACTUAL COVERAGE AREAS
+    console.log('✅ User location marker added');
+  }, [location, getCurrentLocation, locationLoading, locationError]);
+
+  // Add zones to map - MINIMAL WORKING VERSION
   useEffect(() => {
-    if (!map.current || !dbZones.length) return;
+    if (!map.current || !dbZones.length) {
+      console.log('🔍 Zones check failed:', { mapReady: !!map.current, zonesCount: dbZones.length });
+      return;
+    }
 
-    console.log('📍 Adding zones with coverage areas:', dbZones.length);
+    console.log('🎯 Adding zones to map:', dbZones.length);
 
     // Clear existing zone markers
     zoneMarkers.current.forEach(marker => marker.remove());
     zoneMarkers.current = [];
 
-    dbZones.forEach(zone => {
-      console.log('Adding zone:', zone.name, 'radius:', zone.radius_meters);
+    dbZones.forEach((zone, index) => {
+      console.log(`🎯 Adding zone ${index + 1}:`, zone.name, zone.latitude, zone.longitude);
 
-      // Add zone coverage circle using Mapbox GL circle layer
-      const zoneId = `zone-${zone.id}`;
-      
-      // Remove existing if present
-      if (map.current!.getLayer(zoneId)) {
-        map.current!.removeLayer(zoneId);
-      }
-      if (map.current!.getSource(zoneId)) {
-        map.current!.removeSource(zoneId);
-      }
-
-      // Add source for zone point
-      map.current!.addSource(zoneId, {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [Number(zone.longitude), Number(zone.latitude)]
-          },
-          properties: {}
-        }
-      });
-
-      // Add circle layer showing actual zone radius
-      map.current!.addLayer({
-        id: zoneId,
-        type: 'circle',
-        source: zoneId,
-        paint: {
-          'circle-radius': {
-            base: 1.75,
-            stops: [
-              [12, (zone.radius_meters || 100) * 0.05], // Smaller at low zoom
-              [20, (zone.radius_meters || 100) * 0.3]   // Larger at high zoom
-            ]
-          },
-          'circle-color': '#8B5CF6', // Purple for bars
-          'circle-opacity': 0.3,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#8B5CF6',
-          'circle-stroke-opacity': 0.8
-        }
-      });
-
-      // Add center marker with icon
+      // Create zone marker
       const zoneEl = document.createElement('div');
       zoneEl.style.cssText = `
-        width: 40px;
-        height: 40px;
-        background: white;
-        border: 3px solid #8B5CF6;
+        width: 50px;
+        height: 50px;
+        background: #8B5CF6;
+        border: 4px solid white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        font-size: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.6);
         z-index: 1000;
+        animation: pulse 2s infinite;
       `;
       zoneEl.textContent = '🍸';
 
@@ -276,64 +215,11 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         .addTo(map.current!);
 
       zoneMarkers.current.push(marker);
-      console.log('✅ Zone added with coverage area:', zone.name);
+      console.log(`✅ Zone ${index + 1} added successfully:`, zone.name);
     });
 
-    console.log('📍 Total zones with coverage areas:', zoneMarkers.current.length);
+    console.log('🎯 Total zones added:', zoneMarkers.current.length);
   }, [dbZones]);
-
-  // Check for zone entry
-  useEffect(() => {
-    if (!location || !user) return;
-
-    let enteredZone: any = null;
-    for (const zone of dbZones) {
-      if (isInZone(Number(zone.latitude), Number(zone.longitude), zone.radius_meters || 100)) {
-        enteredZone = zone;
-        break;
-      }
-    }
-
-    if (enteredZone && (!currentZone || currentZone.id !== enteredZone.id)) {
-      setCurrentZone(enteredZone);
-      setShowZoneNotification(true);
-      
-      // Record user location in database
-      supabase
-        .from('user_locations')
-        .insert({
-          user_id: user.id,
-          zone_id: enteredZone.id,
-          latitude: location.latitude,
-          longitude: location.longitude,
-          entered_at: new Date().toISOString()
-        })
-        .then(({ error }) => {
-          if (error) console.error('Error recording location:', error);
-        });
-        
-      toast({
-        title: `Welcome to ${enteredZone.name}!`,
-        description: "You've entered a zone with other users nearby",
-      });
-    } else if (!enteredZone) {
-      setCurrentZone(null);
-      setShowZoneNotification(false);
-    }
-  }, [location, dbZones, user, isInZone, currentZone]);
-
-  // Listen for zone entry events from popup buttons
-  useEffect(() => {
-    const handleEnterZone = (event: CustomEvent) => {
-      onEnterZone(event.detail);
-    };
-
-    window.addEventListener('enterZone', handleEnterZone as EventListener);
-    
-    return () => {
-      window.removeEventListener('enterZone', handleEnterZone as EventListener);
-    };
-  }, [onEnterZone]);
 
   return (
     <div className="relative h-screen bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden">
@@ -353,7 +239,7 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         
         <div className="text-center">
           <h1 className="text-lg font-bold text-foreground">Discover</h1>
-          <p className="text-sm text-muted-foreground">Real map • Real locations</p>
+          <p className="text-sm text-muted-foreground">Find zones nearby</p>
         </div>
 
         <Button
@@ -372,9 +258,9 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
           <Card className="p-6 max-w-md w-full mx-4">
             <div className="space-y-4 text-center">
               <MapIcon className="w-12 h-12 mx-auto text-primary animate-pulse" />
-              <h2 className="text-xl font-bold">Loading Real Map</h2>
+              <h2 className="text-xl font-bold">Loading Map</h2>
               <p className="text-sm text-muted-foreground">
-                Fetching map configuration...
+                Setting up your map...
               </p>
             </div>
           </Card>
@@ -388,9 +274,9 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
             <div className="space-y-4">
               <div className="text-center">
                 <MapIcon className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <h2 className="text-xl font-bold">Real Map Setup</h2>
+                <h2 className="text-xl font-bold">Map Setup</h2>
                 <p className="text-sm text-muted-foreground mt-2">
-                  Enter your Mapbox token to see real streets, buildings, and locations
+                  Enter your Mapbox token
                 </p>
               </div>
               
@@ -420,93 +306,31 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
                 disabled={!mapboxToken.trim()}
                 className="w-full"
               >
-                Load Real Map
+                Load Map
               </Button>
             </div>
           </Card>
         </div>
       )}
 
-      {/* Real Mapbox Map */}
+      {/* Mapbox Map */}
       <div 
         ref={mapContainer} 
         className="absolute inset-0 w-full h-full"
         style={{ display: showTokenInput ? 'none' : 'block' }}
       />
 
-      {/* Location Debug Info */}
-      {location && !showTokenInput && (
-        <div className="absolute top-20 right-4 z-30">
-          <Card className="p-3 bg-background/90 backdrop-blur-sm shadow-card">
-            <div className="text-xs space-y-1">
-              <div className="font-medium text-primary">📍 Your Location</div>
-              <div className="text-muted-foreground">
-                Lat: {location.latitude.toFixed(6)}
-              </div>
-              <div className="text-muted-foreground">
-                Lng: {location.longitude.toFixed(6)}
-              </div>
-              <div className="text-muted-foreground">
-                Updated: {new Date(location.timestamp).toLocaleTimeString()}
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Zone Entry Notification */}
-      {showZoneNotification && currentZone && !showTokenInput && (
-        <div className="absolute bottom-24 left-4 right-4 z-30">
-          <Card className="p-4 bg-gradient-primary border-0 shadow-floating animate-fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-5 h-5 text-primary-foreground" />
-                <div className="text-primary-foreground">
-                  <p className="font-medium">You're in {currentZone.name}!</p>
-                  <p className="text-sm opacity-90">People are nearby</p>
-                </div>
-              </div>
-              <Button 
-                onClick={() => onEnterZone(currentZone.id)}
-                variant="secondary"
-                size="sm"
-                className="bg-background/20 text-primary-foreground border-0 hover:bg-background/30"
-              >
-                Start Swiping
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Location States */}
-      {!location && !locationLoading && locationError && !showTokenInput && (
-        <div className="absolute bottom-24 left-4 right-4 z-30">
-          <Card className="p-4 bg-destructive/10 border-destructive/20 shadow-floating">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <AlertCircle className="w-5 h-5 text-destructive" />
-                <div>
-                  <p className="font-medium text-destructive">Location Required</p>
-                  <p className="text-sm text-muted-foreground">Click "Allow Location" and enable in your browser (desktop requires manual permission)</p>
-                </div>
-              </div>
-              <Button 
-                onClick={() => {
-                  getCurrentLocation();
-                  console.log('Location request initiated from desktop');
-                }}
-                variant="outline"
-                size="sm"
-                className="border-destructive/30 text-destructive hover:bg-destructive/10"
-              >
-                <MapIcon className="w-4 h-4 mr-2" />
-                Allow Location
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* Debug Info */}
+      <div className="absolute top-20 left-4 z-30">
+        <Card className="p-3 bg-background/90 backdrop-blur-sm shadow-card">
+          <div className="text-xs space-y-1">
+            <div className="font-medium text-primary">📊 Debug Info</div>
+            <div>Zones: {dbZones.length}</div>
+            <div>Location: {location ? '✅' : '❌'}</div>
+            <div>Map: {map.current ? '✅' : '❌'}</div>
+          </div>
+        </Card>
+      </div>
 
       <style dangerouslySetInnerHTML={{
         __html: `
@@ -520,10 +344,6 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
             100% {
               box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
             }
-          }
-          
-          .zone-marker {
-            animation: pulse 2s infinite !important;
           }
         `
       }} />
