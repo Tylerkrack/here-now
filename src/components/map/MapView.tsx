@@ -192,41 +192,38 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
         </Button>
       </div>
 
-      {/* Map Background - Simulated city layout */}
-      <div className="absolute inset-0">
-        {/* Streets */}
-        <div className="absolute inset-0">
-          {/* Horizontal streets */}
-          <div className="absolute w-full h-1 bg-border/60 top-1/4"></div>
-          <div className="absolute w-full h-1 bg-border/60 top-1/2"></div>
-          <div className="absolute w-full h-1 bg-border/60 top-3/4"></div>
-          
-          {/* Vertical streets */}
-          <div className="absolute h-full w-1 bg-border/60 left-1/4"></div>
-          <div className="absolute h-full w-1 bg-border/60 left-1/2"></div>
-          <div className="absolute h-full w-1 bg-border/60 left-3/4"></div>
+      {/* Map Background - Minimal design */}
+      <div className="absolute inset-0 bg-gradient-to-br from-muted/10 to-muted/30">
+        {/* Simple grid pattern */}
+        <div className="absolute inset-0 opacity-20">
+          <div className="h-full w-full" style={{
+            backgroundImage: `
+              linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
+              linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px)
+            `,
+            backgroundSize: '40px 40px'
+          }} />
         </div>
-
-        {/* Buildings/Blocks */}
-        <div className="absolute inset-0">
-          {/* Building blocks */}
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              className="absolute bg-muted/30 rounded-sm"
-              style={{
-                left: `${15 + (i % 3) * 25}%`,
-                top: `${20 + Math.floor(i / 3) * 20}%`,
-                width: `${12 + Math.random() * 8}%`,
-                height: `${8 + Math.random() * 6}%`,
-              }}
-            />
-          ))}
-        </div>
-
-        {/* Park areas */}
-        <div className="absolute bg-friendship/20 rounded-lg" style={{ left: "50%", top: "75%", width: "20%", height: "15%" }} />
-        <div className="absolute bg-friendship/20 rounded-lg" style={{ left: "10%", top: "20%", width: "15%", height: "12%" }} />
+        
+        {/* Location Debug Info */}
+        {location && (
+          <div className="absolute top-20 right-4 z-30">
+            <Card className="p-3 bg-background/90 backdrop-blur-sm shadow-card">
+              <div className="text-xs space-y-1">
+                <div className="font-medium text-primary">📍 Your Location</div>
+                <div className="text-muted-foreground">
+                  Lat: {location.latitude.toFixed(6)}
+                </div>
+                <div className="text-muted-foreground">
+                  Lng: {location.longitude.toFixed(6)}
+                </div>
+                <div className="text-muted-foreground">
+                  Updated: {new Date(location.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Zones as circular areas */}

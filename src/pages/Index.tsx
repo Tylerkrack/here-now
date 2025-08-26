@@ -364,7 +364,7 @@ const Index = () => {
       )}
 
       {/* Bottom Navigation */}
-      {!["onboarding", "swiping", "chat", "profile", "settings"].includes(appState) && (
+      {!["onboarding", "swiping", "chat", "settings"].includes(appState) && (
         <BottomNav
           activeTab={activeTab}
           onTabChange={handleTabChange}
