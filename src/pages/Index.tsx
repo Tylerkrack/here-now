@@ -131,11 +131,15 @@ const Index = () => {
       return;
     }
 
-    // Check if user has completed onboarding (has complete profile)
-    if (profile && profile.display_name && profile.bio && profile.photos.length > 0 && profile.intent) {
+    // Check if user has completed onboarding
+    // Minimum requirements: display_name and age (from signup) + at least one of bio/photos/intent
+    const hasBasicInfo = profile && profile.display_name && profile.age;
+    const hasAdditionalInfo = profile && (profile.bio || profile.photos.length > 0 || profile.intent);
+    
+    if (hasBasicInfo && hasAdditionalInfo) {
       setAppState("map");
     } else {
-      // Simulate loading time then show onboarding
+      // Show onboarding for new users or incomplete profiles
       const timer = setTimeout(() => {
         setAppState("onboarding");
       }, 2000);
