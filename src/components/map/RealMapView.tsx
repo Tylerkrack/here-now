@@ -112,8 +112,13 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     });
   };
 
-  // Update user location on map
+  // Update user location on map and auto-request location
   useEffect(() => {
+    // Auto-request location on map load for desktop users
+    if (!location && !locationLoading && !locationError) {
+      getCurrentLocation();
+    }
+    
     if (!map.current || !location) return;
 
     // Move map to user location
@@ -392,18 +397,21 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
               <div className="flex items-center space-x-3">
                 <AlertCircle className="w-5 h-5 text-destructive" />
                 <div>
-                  <p className="font-medium text-destructive">Location Access Needed</p>
-                  <p className="text-sm text-muted-foreground">Enable location to see your position on the real map</p>
+                  <p className="font-medium text-destructive">Location Required</p>
+                  <p className="text-sm text-muted-foreground">Click "Allow Location" and enable in your browser (desktop requires manual permission)</p>
                 </div>
               </div>
               <Button 
-                onClick={() => getCurrentLocation()}
+                onClick={() => {
+                  getCurrentLocation();
+                  console.log('Location request initiated from desktop');
+                }}
                 variant="outline"
                 size="sm"
                 className="border-destructive/30 text-destructive hover:bg-destructive/10"
               >
                 <MapIcon className="w-4 h-4 mr-2" />
-                Enable
+                Allow Location
               </Button>
             </div>
           </Card>
