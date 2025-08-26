@@ -156,8 +156,25 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
   };
 
   // Handle zoom controls
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.5, 3));
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.5, 0.5));
+  const handleZoomIn = () => {
+    console.log("Zoom in clicked, current zoom:", zoomLevel);
+    setZoomLevel(prev => {
+      const newZoom = Math.min(prev + 0.5, 3);
+      console.log("New zoom level:", newZoom);
+      return newZoom;
+    });
+  };
+  
+  const handleZoomOut = () => {
+    console.log("Zoom out clicked, current zoom:", zoomLevel);
+    setZoomLevel(prev => {
+      const newZoom = Math.max(prev - 0.5, 0.5);
+      console.log("New zoom level:", newZoom);
+      return newZoom;
+    });
+  };
+
+  console.log("Current zoom level in render:", zoomLevel);
 
   // Handle location permission request
   const handleRequestLocation = () => {
@@ -199,45 +216,55 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
 
       {/* Interactive Map with Buildings */}
       <div 
-        className="absolute inset-0 transition-transform duration-300 ease-out"
+        className="absolute inset-0 transition-transform duration-300 ease-out bg-red-100"
         style={{ 
           transform: `scale(${zoomLevel})`,
-          transformOrigin: 'center center'
+          transformOrigin: 'center center',
+          border: '2px solid red' // Debug border
         }}
       >
+        {/* Debug info */}
+        <div className="absolute top-2 left-2 bg-yellow-200 p-2 text-black text-xs z-50">
+          Zoom: {zoomLevel}x
+        </div>
         {/* Street Grid */}
         <div className="absolute inset-0">
-          {/* Major Streets */}
-          <div className="absolute w-full h-2 bg-border/40" style={{ top: '20%' }} />
-          <div className="absolute w-full h-2 bg-border/40" style={{ top: '40%' }} />
-          <div className="absolute w-full h-2 bg-border/40" style={{ top: '60%' }} />
-          <div className="absolute w-full h-2 bg-border/40" style={{ top: '80%' }} />
+          {/* Major Streets - Make them much more visible */}
+          <div className="absolute w-full h-4 bg-gray-600" style={{ top: '20%' }} />
+          <div className="absolute w-full h-4 bg-gray-600" style={{ top: '40%' }} />
+          <div className="absolute w-full h-4 bg-gray-600" style={{ top: '60%' }} />
+          <div className="absolute w-full h-4 bg-gray-600" style={{ top: '80%' }} />
           
-          <div className="absolute h-full w-2 bg-border/40" style={{ left: '15%' }} />
-          <div className="absolute h-full w-2 bg-border/40" style={{ left: '35%' }} />
-          <div className="absolute h-full w-2 bg-border/40" style={{ left: '55%' }} />
-          <div className="absolute h-full w-2 bg-border/40" style={{ left: '75%' }} />
+          <div className="absolute h-full w-4 bg-gray-600" style={{ left: '15%' }} />
+          <div className="absolute h-full w-4 bg-gray-600" style={{ left: '35%' }} />
+          <div className="absolute h-full w-4 bg-gray-600" style={{ left: '55%' }} />
+          <div className="absolute h-full w-4 bg-gray-600" style={{ left: '75%' }} />
         </div>
 
-        {/* Buildings and Landmarks */}
+        {/* Buildings and Landmarks - Make them much more visible */}
         <div className="absolute inset-0">
           {/* Office Buildings */}
-          <div className="absolute bg-muted/60 rounded shadow-sm" style={{ left: '25%', top: '25%', width: '8%', height: '12%' }}>
-            <div className="absolute inset-1 bg-muted/80 rounded-sm" />
+          <div className="absolute bg-blue-500 rounded shadow-lg" style={{ left: '25%', top: '25%', width: '8%', height: '12%' }}>
+            <div className="absolute inset-1 bg-blue-600 rounded-sm" />
+            <div className="absolute top-1 left-1 text-white text-xs">OFFICE</div>
           </div>
-          <div className="absolute bg-muted/60 rounded shadow-sm" style={{ left: '45%', top: '15%', width: '6%', height: '18%' }}>
-            <div className="absolute inset-1 bg-muted/80 rounded-sm" />
+          <div className="absolute bg-blue-500 rounded shadow-lg" style={{ left: '45%', top: '15%', width: '6%', height: '18%' }}>
+            <div className="absolute inset-1 bg-blue-600 rounded-sm" />
+            <div className="absolute top-1 left-1 text-white text-xs">TOWER</div>
           </div>
-          <div className="absolute bg-muted/60 rounded shadow-sm" style={{ left: '65%', top: '25%', width: '7%', height: '15%' }}>
-            <div className="absolute inset-1 bg-muted/80 rounded-sm" />
+          <div className="absolute bg-blue-500 rounded shadow-lg" style={{ left: '65%', top: '25%', width: '7%', height: '15%' }}>
+            <div className="absolute inset-1 bg-blue-600 rounded-sm" />
+            <div className="absolute top-1 left-1 text-white text-xs">CORP</div>
           </div>
 
           {/* Shopping Centers */}
-          <div className="absolute bg-primary/20 rounded shadow-sm" style={{ left: '20%', top: '45%', width: '12%', height: '8%' }}>
-            <div className="absolute inset-1 bg-primary/30 rounded-sm" />
+          <div className="absolute bg-orange-500 rounded shadow-lg" style={{ left: '20%', top: '45%', width: '12%', height: '8%' }}>
+            <div className="absolute inset-1 bg-orange-600 rounded-sm" />
+            <div className="absolute top-1 left-1 text-white text-xs">MALL</div>
           </div>
-          <div className="absolute bg-primary/20 rounded shadow-sm" style={{ left: '60%', top: '65%', width: '10%', height: '6%' }}>
-            <div className="absolute inset-1 bg-primary/30 rounded-sm" />
+          <div className="absolute bg-orange-500 rounded shadow-lg" style={{ left: '60%', top: '65%', width: '10%', height: '6%' }}>
+            <div className="absolute inset-1 bg-orange-600 rounded-sm" />
+            <div className="absolute top-1 left-1 text-white text-xs">SHOP</div>
           </div>
 
           {/* Parks */}
@@ -360,23 +387,26 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
       </div>
 
       {/* Zoom Controls */}
-      <div className="absolute bottom-24 right-4 z-30 flex flex-col space-y-2">
+      <div className="absolute bottom-24 right-4 z-50 flex flex-col space-y-2">
         <Button
           variant="outline"
           size="icon"
           onClick={handleZoomIn}
-          className="bg-background/80 backdrop-blur-sm shadow-card"
+          className="bg-blue-500 text-white shadow-lg border-2 border-blue-700 text-xl font-bold"
         >
-          <span className="text-lg font-bold">+</span>
+          +
         </Button>
         <Button
           variant="outline"
           size="icon"
           onClick={handleZoomOut}
-          className="bg-background/80 backdrop-blur-sm shadow-card"
+          className="bg-red-500 text-white shadow-lg border-2 border-red-700 text-xl font-bold"
         >
-          <span className="text-lg font-bold">-</span>
+          -
         </Button>
+        <div className="bg-yellow-200 p-2 text-black text-xs">
+          Zoom: {zoomLevel}x
+        </div>
       </div>
 
       {/* Location Error/Loading States */}
