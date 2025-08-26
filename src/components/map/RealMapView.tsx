@@ -19,7 +19,7 @@ interface RealMapViewProps {
 }
 
 export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: RealMapViewProps) {
-  alert('🗺️ RealMapView component started');
+  
   
   const { user } = useAuth();
   const { location, error: locationError, loading: locationLoading, getCurrentLocation, isInZone } = useLocation();
@@ -176,41 +176,52 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     console.log('✅ User location marker added');
   }, [location, getCurrentLocation, locationLoading, locationError]);
 
-  // Add zones as actual circles, not markers
+  // Add zones as proper radius circles (only once when map loads)
   useEffect(() => {
-    if (!map.current || !dbZones.length) {
-      console.log('🔍 Zones check failed:', { mapReady: !!map.current, zonesCount: dbZones.length });
-      return;
-    }
+    if (!map.current || !dbZones.length) return;
 
-    console.log('🎯 Adding zones as circles to map:', dbZones.length);
-
-    // Wait for map to be fully loaded
-    map.current.on('load', () => {
+    const addZonesToMap = () => {
       // Remove existing zone layers if they exist
-      if (map.current!.getLayer('zones-fill')) {
-        map.current!.removeLayer('zones-fill');
-      }
-      if (map.current!.getLayer('zones-outline')) {
-        map.current!.removeLayer('zones-outline');
-      }
-      if (map.current!.getSource('zones')) {
-        map.current!.removeSource('zones');
+      try {
+        if (map.current!.getLayer('zones-fill')) map.current!.removeLayer('zones-fill');
+        if (map.current!.getLayer('zones-outline')) map.current!.removeLayer('zones-outline');
+        if (map.current!.getSource('zones')) map.current!.removeSource('zones');
+      } catch (e) {
+        // Layers don't exist yet, continue
       }
 
-      // Create GeoJSON features for zones
-      const zoneFeatures = dbZones.map(zone => ({
-        type: 'Feature' as const,
-        properties: {
-          name: zone.name,
-          type: zone.zone_type,
-          radius: zone.radius_meters
-        },
-        geometry: {
-          type: 'Point' as const,
-          coordinates: [Number(zone.longitude), Number(zone.latitude)]
+      console.log('🎯 Adding zone circles with actual radius to map:', dbZones.length);
+
+      // Create circle polygons for each zone based on radius_meters
+      const zoneFeatures = dbZones.map(zone => {
+        const center = [Number(zone.longitude), Number(zone.latitude)];
+        const radiusInKm = zone.radius_meters / 1000;
+        
+        // Create circle polygon
+        const points = 64;
+        const coords = [];
+        for (let i = 0; i < points; i++) {
+          const angle = (i * 360) / points;
+          const lat = center[1] + (radiusInKm / 111.32) * Math.cos(angle * Math.PI / 180);
+          const lng = center[0] + (radiusInKm / (111.32 * Math.cos(center[1] * Math.PI / 180))) * Math.sin(angle * Math.PI / 180);
+          coords.push([lng, lat]);
         }
-      }));
+        coords.push(coords[0]); // Close the polygon
+
+        return {
+          type: 'Feature' as const,
+          properties: {
+            id: zone.id,
+            name: zone.name,
+            type: zone.zone_type,
+            radius: zone.radius_meters
+          },
+          geometry: {
+            type: 'Polygon' as const,
+            coordinates: [coords]
+          }
+        };
+      });
 
       // Add zones source
       map.current!.addSource('zones', {
@@ -221,52 +232,69 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
         }
       });
 
-      // Add zone circles (fill)
+      // Add zone fill
       map.current!.addLayer({
         id: 'zones-fill',
-        type: 'circle',
+        type: 'fill',
         source: 'zones',
         paint: {
-          'circle-radius': {
-            stops: [
-              [10, 5],
-              [15, 20],
-              [18, 50]
-            ]
-          },
-          'circle-color': '#8B5CF6',
-          'circle-opacity': 0.3
+          'fill-color': '#8B5CF6',
+          'fill-opacity': 0.2
         }
       });
 
-      // Add zone outlines
+      // Add zone outline
       map.current!.addLayer({
         id: 'zones-outline',
-        type: 'circle',
+        type: 'line',
         source: 'zones',
         paint: {
-          'circle-radius': {
-            stops: [
-              [10, 5],
-              [15, 20],
-              [18, 50]
-            ]
-          },
-          'circle-color': '#8B5CF6',
-          'circle-stroke-width': 3,
-          'circle-stroke-color': '#FFFFFF',
-          'circle-opacity': 0
+          'line-color': '#8B5CF6',
+          'line-width': 3,
+          'line-opacity': 0.8
         }
       });
 
-      console.log('✅ Zone circles added to map');
-    });
+      console.log('✅ Zone circles with actual radius added to map');
+    };
 
-    // If map is already loaded, trigger the effect immediately
+    // Only add zones once when map is loaded
     if (map.current.isStyleLoaded()) {
-      map.current.fire('load');
+      addZonesToMap();
+    } else {
+      map.current.once('load', addZonesToMap);
     }
   }, [dbZones]);
+
+  // Check for zone entry/exit
+  useEffect(() => {
+    if (!location || !dbZones.length) return;
+
+    const currentZones = dbZones.filter(zone => 
+      isInZone(Number(zone.latitude), Number(zone.longitude), zone.radius_meters)
+    );
+
+    if (currentZones.length > 0 && (!currentZone || currentZone.id !== currentZones[0].id)) {
+      const newZone = currentZones[0];
+      setCurrentZone(newZone);
+      setShowZoneNotification(true);
+      onEnterZone(newZone.id);
+      
+      toast({
+        title: `Entered ${newZone.name}`,
+        description: `You're now in the ${newZone.zone_type} zone`,
+      });
+
+      console.log('🎯 Entered zone:', newZone.name);
+      
+      // Hide notification after 3 seconds
+      setTimeout(() => setShowZoneNotification(false), 3000);
+    } else if (currentZones.length === 0 && currentZone) {
+      console.log('🚪 Left zone:', currentZone.name);
+      setCurrentZone(null);
+      setShowZoneNotification(false);
+    }
+  }, [location, dbZones, currentZone, isInZone, onEnterZone, toast]);
 
   return (
     <div className="relative h-screen bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden">
@@ -378,6 +406,21 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
           </div>
         </Card>
       </div>
+
+      {/* Zone Entry Notification */}
+      {showZoneNotification && currentZone && (
+        <div className="absolute top-32 left-4 right-4 z-30">
+          <Card className="p-4 bg-primary/90 backdrop-blur-sm shadow-card border-primary">
+            <div className="flex items-center space-x-3">
+              <div className="text-2xl">🍸</div>
+              <div className="flex-1">
+                <h3 className="font-bold text-primary-foreground">Entered {currentZone.name}</h3>
+                <p className="text-sm text-primary-foreground/80">You're now in the {currentZone.zone_type} zone</p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       <style dangerouslySetInnerHTML={{
         __html: `
