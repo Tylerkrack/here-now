@@ -7,7 +7,7 @@ import AppLogo from "@/components/ui/app-logo";
 interface Zone {
   id: string;
   name: string;
-  position: { x: number; y: number };
+  area: { x: number; y: number }[]; // Polygon points
   isActive: boolean;
   isUserInside: boolean;
   type: "cafe" | "restaurant" | "bar" | "office" | "park";
@@ -21,17 +21,61 @@ interface MapViewProps {
 
 export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewProps) {
   const [zones, setZones] = useState<Zone[]>([
-    { id: "1", name: "Central Coffee", position: { x: 45, y: 60 }, isActive: true, isUserInside: false, type: "cafe" },
-    { id: "2", name: "Art District Gallery", position: { x: 65, y: 35 }, isActive: true, isUserInside: false, type: "bar" },
-    { id: "3", name: "Marina Restaurant", position: { x: 30, y: 75 }, isActive: false, isUserInside: false, type: "restaurant" },
-    { id: "4", name: "Tech Hub Coworking", position: { x: 75, y: 55 }, isActive: true, isUserInside: false, type: "office" },
-    { id: "5", name: "University Park", position: { x: 55, y: 80 }, isActive: true, isUserInside: false, type: "park" },
-    { id: "6", name: "Downtown Bistro", position: { x: 40, y: 40 }, isActive: true, isUserInside: false, type: "restaurant" },
-    { id: "7", name: "Rooftop Lounge", position: { x: 60, y: 25 }, isActive: false, isUserInside: false, type: "bar" },
+    { 
+      id: "1", 
+      name: "Central Coffee District", 
+      area: [
+        { x: 40, y: 55 }, { x: 50, y: 55 }, { x: 50, y: 65 }, { x: 40, y: 65 }
+      ], 
+      isActive: true, 
+      isUserInside: false, 
+      type: "cafe" 
+    },
+    { 
+      id: "2", 
+      name: "Art District", 
+      area: [
+        { x: 60, y: 30 }, { x: 70, y: 30 }, { x: 70, y: 40 }, { x: 60, y: 40 }
+      ], 
+      isActive: true, 
+      isUserInside: false, 
+      type: "bar" 
+    },
+    { 
+      id: "3", 
+      name: "Marina Dining", 
+      area: [
+        { x: 25, y: 70 }, { x: 35, y: 70 }, { x: 35, y: 80 }, { x: 25, y: 80 }
+      ], 
+      isActive: false, 
+      isUserInside: false, 
+      type: "restaurant" 
+    },
+    { 
+      id: "4", 
+      name: "Tech Hub", 
+      area: [
+        { x: 70, y: 50 }, { x: 80, y: 50 }, { x: 80, y: 60 }, { x: 70, y: 60 }
+      ], 
+      isActive: true, 
+      isUserInside: false, 
+      type: "office" 
+    },
+    { 
+      id: "5", 
+      name: "University Park", 
+      area: [
+        { x: 50, y: 75 }, { x: 60, y: 75 }, { x: 60, y: 85 }, { x: 50, y: 85 }
+      ], 
+      isActive: true, 
+      isUserInside: false, 
+      type: "park" 
+    },
   ]);
 
   const [userPosition, setUserPosition] = useState({ x: 50, y: 50 });
   const [showZoneNotification, setShowZoneNotification] = useState(false);
+  const [currentZone, setCurrentZone] = useState<Zone | null>(null);
 
   const getZoneIcon = (type: Zone["type"]) => {
     switch (type) {
@@ -43,22 +87,43 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
     }
   };
 
-  const handleZoneClick = (zone: Zone) => {
-    if (!zone.isActive) return;
+  // Check if user is inside any zone
+  const isPointInPolygon = (point: { x: number; y: number }, polygon: { x: number; y: number }[]) => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x, yi = polygon[i].y;
+      const xj = polygon[j].x, yj = polygon[j].y;
+      
+      if (((yi > point.y) !== (yj > point.y)) && (point.x < (xj - xi) * (point.y - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  };
+
+  useEffect(() => {
+    // Check if user entered any zone
+    const enteredZone = zones.find(zone => 
+      zone.isActive && isPointInPolygon(userPosition, zone.area)
+    );
     
-    // Simulate entering zone
-    setZones(prev => prev.map(z => 
-      z.id === zone.id 
-        ? { ...z, isUserInside: true }
-        : { ...z, isUserInside: false }
-    ));
-    
-    setShowZoneNotification(true);
-    setTimeout(() => setShowZoneNotification(false), 3000);
-    
-    setTimeout(() => {
-      onEnterZone(zone.id);
-    }, 1500);
+    if (enteredZone && !enteredZone.isUserInside) {
+      // User entered a new zone
+      setZones(prev => prev.map(z => ({ ...z, isUserInside: z.id === enteredZone.id })));
+      setCurrentZone(enteredZone);
+      setShowZoneNotification(true);
+    } else if (!enteredZone) {
+      // User left all zones
+      setZones(prev => prev.map(z => ({ ...z, isUserInside: false })));
+      setCurrentZone(null);
+      setShowZoneNotification(false);
+    }
+  }, [userPosition]);
+
+  const handleStartSwiping = () => {
+    if (currentZone) {
+      onEnterZone(currentZone.id);
+    }
   };
 
   return (
@@ -129,54 +194,47 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
         <div className="absolute bg-friendship/20 rounded-lg" style={{ left: "10%", top: "20%", width: "15%", height: "12%" }} />
       </div>
 
-      {/* Zones */}
+      {/* Zones as highlighted areas */}
       {zones.map((zone) => {
-        const ZoneIcon = getZoneIcon(zone.type);
+        const pathString = zone.area.map((point, index) => 
+          `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+        ).join(' ') + ' Z';
         
         return (
-          <div
-            key={zone.id}
-            className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 ${
-              zone.isUserInside ? "scale-110 z-10" : "scale-100"
-            }`}
-            style={{
-              left: `${zone.position.x}%`,
-              top: `${zone.position.y}%`,
-            }}
-            onClick={() => handleZoneClick(zone)}
-          >
-            <div
-              className={`w-16 h-16 rounded-full flex items-center justify-center shadow-elevated transition-all duration-300 ${
-                zone.isActive
-                  ? zone.isUserInside
-                    ? "bg-gradient-primary animate-pulse"
-                    : "bg-background border-2 border-primary/30 hover:border-primary/60 hover:shadow-floating"
-                  : "bg-muted border-2 border-muted-foreground/20"
-              }`}
-            >
-              <ZoneIcon className={`w-6 h-6 ${
-                zone.isActive 
-                  ? zone.isUserInside 
-                    ? "text-primary-foreground" 
-                    : "text-primary"
-                  : "text-muted-foreground"
-              }`} />
-            </div>
+          <div key={zone.id} className="absolute inset-0">
+            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <path
+                d={pathString}
+                className={`transition-all duration-500 ${
+                  zone.isActive
+                    ? zone.isUserInside
+                      ? "fill-primary/40 stroke-primary stroke-1"
+                      : "fill-primary/10 stroke-primary/30 stroke-1 hover:fill-primary/20"
+                    : "fill-muted/20 stroke-muted/40 stroke-1"
+                }`}
+              />
+            </svg>
             
-            <div className="mt-2 text-center max-w-20">
-              <div className={`text-xs font-medium truncate ${
-                zone.isUserInside ? "text-primary" : "text-foreground"
+            {/* Zone label */}
+            <div
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{
+                left: `${zone.area.reduce((sum, point) => sum + point.x, 0) / zone.area.length}%`,
+                top: `${zone.area.reduce((sum, point) => sum + point.y, 0) / zone.area.length}%`,
+              }}
+            >
+              <div className={`text-center transition-all duration-300 ${
+                zone.isUserInside ? "scale-110" : "scale-100"
               }`}>
-                {zone.name}
-              </div>
-              <div className={`text-xs ${
-                zone.isActive 
-                  ? zone.isUserInside
-                    ? "text-primary/80"
-                    : "text-muted-foreground"
-                  : "text-muted-foreground"
-              }`}>
-                {zone.isActive ? "Active" : "Quiet"}
+                <div className={`text-xs font-medium px-2 py-1 rounded-full ${
+                  zone.isActive 
+                    ? zone.isUserInside 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-background/80 text-foreground border border-primary/30"
+                    : "bg-muted/80 text-muted-foreground"
+                } backdrop-blur-sm`}>
+                  {zone.name}
+                </div>
               </div>
             </div>
           </div>
@@ -199,45 +257,29 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
       </div>
 
       {/* Zone Entry Notification */}
-      {showZoneNotification && (
+      {showZoneNotification && currentZone && (
         <div className="absolute top-20 left-4 right-4 z-30">
           <Card className="p-4 bg-gradient-primary border-0 shadow-floating animate-fade-in">
-            <div className="flex items-center space-x-3">
-              <MapPin className="w-5 h-5 text-primary-foreground" />
-              <div className="text-primary-foreground">
-                <p className="font-medium">You've entered a zone!</p>
-                <p className="text-sm opacity-90">People are nearby. Start exploring!</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-5 h-5 text-primary-foreground" />
+                <div className="text-primary-foreground">
+                  <p className="font-medium">You're in {currentZone.name}!</p>
+                  <p className="text-sm opacity-90">People are nearby</p>
+                </div>
               </div>
+              <Button 
+                onClick={handleStartSwiping}
+                variant="secondary"
+                size="sm"
+                className="bg-background/20 text-primary-foreground border-0 hover:bg-background/30"
+              >
+                Start Swiping
+              </Button>
             </div>
           </Card>
         </div>
       )}
-
-      {/* Bottom Info Panel */}
-      <div className="absolute bottom-4 left-4 right-4 z-20">
-        <Card className="p-4 bg-background/90 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">
-                {zones.filter(z => z.isActive).length} active zones nearby
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Tap on an active zone to discover people
-              </p>
-            </div>
-            <div className="flex space-x-2">
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                <span className="text-xs">Active</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <div className="w-3 h-3 bg-muted rounded-full"></div>
-                <span className="text-xs">Quiet</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }
