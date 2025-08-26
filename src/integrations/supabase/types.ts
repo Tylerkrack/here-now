@@ -14,7 +14,230 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          id: string
+          is_active: boolean | null
+          matched_at: string | null
+          user1_id: string
+          user2_id: string
+          zone_id: string | null
+        }
+        Insert: {
+          id?: string
+          is_active?: boolean | null
+          matched_at?: string | null
+          user1_id: string
+          user2_id: string
+          zone_id?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean | null
+          matched_at?: string | null
+          user1_id?: string
+          user2_id?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matches_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages: {
+        Row: {
+          content: string
+          id: string
+          match_id: string
+          message_type: string | null
+          read_at: string | null
+          sender_id: string
+          sent_at: string | null
+        }
+        Insert: {
+          content: string
+          id?: string
+          match_id: string
+          message_type?: string | null
+          read_at?: string | null
+          sender_id: string
+          sent_at?: string | null
+        }
+        Update: {
+          content?: string
+          id?: string
+          match_id?: string
+          message_type?: string | null
+          read_at?: string | null
+          sender_id?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          age: number
+          bio: string | null
+          created_at: string | null
+          display_name: string
+          id: string
+          intent: string | null
+          interests: string[] | null
+          is_active: boolean | null
+          photos: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          age: number
+          bio?: string | null
+          created_at?: string | null
+          display_name: string
+          id?: string
+          intent?: string | null
+          interests?: string[] | null
+          is_active?: boolean | null
+          photos?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          age?: number
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          intent?: string | null
+          interests?: string[] | null
+          is_active?: boolean | null
+          photos?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      swipes: {
+        Row: {
+          direction: string
+          id: string
+          swiped_at: string | null
+          swiped_id: string
+          swiper_id: string
+          zone_id: string | null
+        }
+        Insert: {
+          direction: string
+          id?: string
+          swiped_at?: string | null
+          swiped_id: string
+          swiper_id: string
+          zone_id?: string | null
+        }
+        Update: {
+          direction?: string
+          id?: string
+          swiped_at?: string | null
+          swiped_id?: string
+          swiper_id?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "swipes_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_locations: {
+        Row: {
+          entered_at: string | null
+          id: string
+          is_active: boolean | null
+          latitude: number
+          left_at: string | null
+          longitude: number
+          user_id: string
+          zone_id: string | null
+        }
+        Insert: {
+          entered_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude: number
+          left_at?: string | null
+          longitude: number
+          user_id: string
+          zone_id?: string | null
+        }
+        Update: {
+          entered_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude?: number
+          left_at?: string | null
+          longitude?: number
+          user_id?: string
+          zone_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_locations_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zones: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters: number | null
+          zone_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters?: number | null
+          zone_type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          latitude?: number
+          longitude?: number
+          name?: string
+          radius_meters?: number | null
+          zone_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
