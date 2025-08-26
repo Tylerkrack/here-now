@@ -55,7 +55,7 @@ const Index = () => {
   });
 
   // Database hooks
-  const { profile } = useProfile();
+  const { profile, refetch: refetchProfile } = useProfile();
   const { zones } = useZones();
   const { matches } = useMatches();
   const { profiles: swipeProfiles, recordSwipe } = useProfilesToSwipe(currentZone?.id);
@@ -63,38 +63,65 @@ const Index = () => {
   const handleOnboardingComplete = async (data: any) => {
     if (!user) return;
     
-    // Save profile data to database
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
-    const profileData = {
-      user_id: user.id,
-      display_name: data.name,
-      age: data.age,
-      bio: data.bio,
-      photos: data.photos,
-      interests: data.socialActivities,
-      intent: data.intents[0] || null, // Use first intent for now
-      is_active: true
-    };
-
-    if (existingProfile) {
-      // Update existing profile
-      await supabase
-        .from('profiles')
-        .update(profileData)
-        .eq('user_id', user.id);
-    } else {
-      // Create new profile
-      await supabase
-        .from('profiles')
-        .insert(profileData);
-    }
+    console.log("Completing onboarding with data:", data);
     
-    setAppState("map");
+    try {
+      // Save profile data to database
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      console.log("Existing profile:", existingProfile);
+
+      const profileData = {
+        display_name: data.name,
+        age: data.age,
+        bio: data.bio,
+        photos: data.photos,
+        interests: data.socialActivities,
+        intent: data.intents[0] || null, // Use first intent for now
+        is_active: true
+      };
+
+      console.log("Profile data to save:", profileData);
+
+      if (existingProfile) {
+        // Update existing profile
+        const { data: updatedProfile, error } = await supabase
+          .from('profiles')
+          .update(profileData)
+          .eq('user_id', user.id)
+          .select();
+        
+        console.log("Update result:", { updatedProfile, error });
+        
+        if (error) {
+          console.error("Error updating profile:", error);
+          return;
+        }
+      } else {
+        // Create new profile
+        const { data: newProfile, error } = await supabase
+          .from('profiles')
+          .insert({ ...profileData, user_id: user.id })
+          .select();
+          
+        console.log("Insert result:", { newProfile, error });
+        
+        if (error) {
+          console.error("Error creating profile:", error);
+          return;
+        }
+      }
+      
+      // Refresh the profile to get updated data
+      await refetchProfile();
+      setAppState("map");
+    } catch (error) {
+      console.error("Error in onboarding completion:", error);
+    }
   };
 
   const handleEnterZone = (zoneId: string) => {
@@ -295,8 +322,10 @@ const Index = () => {
             }
           }}
           onSave={async (updatedProfile) => {
+            console.log("Saving profile changes:", updatedProfile);
+            
             // Update profile in database
-            await supabase
+            const { error } = await supabase
               .from('profiles')
               .update({
                 display_name: updatedProfile.name,
@@ -308,6 +337,13 @@ const Index = () => {
               })
               .eq('user_id', user.id);
             
+            if (error) {
+              console.error("Error saving profile:", error);
+              return;
+            }
+            
+            // Refresh the profile to get updated data
+            await refetchProfile();
             setAppState("map");
           }}
           onBack={() => setAppState("map")}
