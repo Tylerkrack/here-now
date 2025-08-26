@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
 import { ArrowLeft, Camera, Save } from "lucide-react";
+import AppLogo from "@/components/ui/app-logo";
 
 interface ProfileData {
   name: string;
@@ -49,9 +50,12 @@ export function ProfileEdit({ profile, onSave, onBack }: ProfileEditProps) {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <AppLogo size="sm" />
+        </div>
         
         <h1 className="text-lg font-semibold">Edit Profile</h1>
         

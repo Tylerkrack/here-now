@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import { MapView } from "@/components/map/MapView";
 import { SwipeDeck } from "@/components/swipe/SwipeDeck";
@@ -8,6 +8,7 @@ import { MatchesList } from "@/components/matches/MatchesList";
 import { ProfileEdit } from "@/components/profile/ProfileEdit";
 import { SettingsScreen } from "@/components/settings/SettingsScreen";
 import { BottomNav } from "@/components/navigation/BottomNav";
+import LoadingScreen from "@/components/ui/loading-screen";
 import { type Intent } from "@/components/ui/intent-badge";
 
 // Mock data for demo
@@ -71,6 +72,7 @@ const mockMatches = [
 ];
 
 type AppState = 
+  | "loading"
   | "onboarding"
   | "map" 
   | "swiping"
@@ -91,7 +93,7 @@ interface UserProfile {
 }
 
 const Index = () => {
-  const [appState, setAppState] = useState<AppState>("onboarding");
+  const [appState, setAppState] = useState<AppState>("loading");
   const [activeTab, setActiveTab] = useState<"map" | "matches" | "profile">("map");
   const [currentZone, setCurrentZone] = useState<string>("");
   const [showMatchModal, setShowMatchModal] = useState(false);
@@ -166,6 +168,18 @@ const Index = () => {
   };
 
   const unreadCount = mockMatches.reduce((sum, match) => sum + match.unreadCount, 0);
+
+  useEffect(() => {
+    // Simulate loading time
+    const timer = setTimeout(() => {
+      setAppState("onboarding");
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (appState === "loading") {
+    return <LoadingScreen />;
+  }
 
   if (appState === "onboarding") {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;

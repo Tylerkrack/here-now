@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
 import { MessageCircle, Clock, MapPin, Search, Heart } from "lucide-react";
+import AppLogo from "@/components/ui/app-logo";
 
 interface Match {
   id: string;
@@ -87,6 +88,13 @@ export function MatchesList({ matches, onChatWith }: MatchesListProps) {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header with Logo */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <AppLogo size="md" />
+        <h1 className="text-xl font-semibold">Matches</h1>
+        <div className="w-8" /> {/* Spacer for centering */}
+      </div>
+      
       {/* Search bar */}
       {(activeChats.length > 0 || newMatches.length > 3) && (
         <div className="p-4 border-b">

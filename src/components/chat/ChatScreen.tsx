@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import AppLogo from "@/components/ui/app-logo";
 
 interface Message {
   id: string;
@@ -83,6 +84,7 @@ export function ChatScreen({
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
+          <AppLogo size="sm" />
           
           <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-card">
             {match.photo ? (

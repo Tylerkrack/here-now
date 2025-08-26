@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MapPin, Users, Settings, User, Coffee, Utensils, Music, Briefcase } from "lucide-react";
+import AppLogo from "@/components/ui/app-logo";
 
 interface Zone {
   id: string;
@@ -64,14 +65,17 @@ export function MapView({ onEnterZone, onOpenProfile, onOpenSettings }: MapViewP
     <div className="relative h-screen bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onOpenProfile}
-          className="bg-background/80 backdrop-blur-sm shadow-card"
-        >
-          <User className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center space-x-2">
+          <AppLogo size="md" />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onOpenProfile}
+            className="bg-background/80 backdrop-blur-sm shadow-card"
+          >
+            <User className="w-5 h-5" />
+          </Button>
+        </div>
         
         <div className="text-center">
           <h1 className="text-lg font-bold text-foreground">Discover</h1>

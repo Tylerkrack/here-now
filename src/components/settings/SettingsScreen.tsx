@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import AppLogo from "@/components/ui/app-logo";
 
 interface SettingsData {
   notifications: {
@@ -72,9 +73,12 @@ export function SettingsScreen({
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <AppLogo size="sm" />
+        </div>
         
         <h1 className="text-lg font-semibold">Settings</h1>
         
