@@ -34,6 +34,11 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
     zonesCount: dbZones.length,
     zonesLoading 
   });
+
+  // Add alert to force debug visibility
+  if (dbZones.length > 0) {
+    console.log('📍 DEBUG: Found zones:', dbZones.map(z => `${z.name} (${z.latitude}, ${z.longitude})`));
+  }
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -200,144 +205,163 @@ export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: Real
       return;
     }
 
-    console.log('Adding zones to map:', dbZones);
+    // Wait for map to be fully loaded before adding zones
+    if (!map.current.isStyleLoaded()) {
+      console.log('Map style not loaded yet, waiting...');
+      map.current.on('style.load', () => {
+        console.log('Map style loaded, adding zones now');
+        addZonesToMap();
+      });
+      return;
+    }
 
-    // Clear existing zone markers
-    zoneMarkers.current.forEach(marker => marker.remove());
-    zoneMarkers.current = [];
+    addZonesToMap();
 
-    dbZones.forEach(zone => {
-      console.log('Creating zone area for:', zone.name, zone.latitude, zone.longitude, zone.radius_meters);
-      
-      // Add a source and layer for the actual zone coverage area
-      const zoneId = `zone-${zone.id}`;
-      
-      // Remove existing layers if they exist
-      if (map.current!.getLayer(`${zoneId}-circle`)) {
-        map.current!.removeLayer(`${zoneId}-circle`);
-      }
-      if (map.current!.getSource(zoneId)) {
-        map.current!.removeSource(zoneId);
-      }
+    function addZonesToMap() {
+      if (!map.current || !dbZones.length) return;
 
-      // Create circle data for the zone's actual radius
-      const center = [Number(zone.longitude), Number(zone.latitude)];
-      const radiusInKm = (zone.radius_meters || 100) / 1000;
-      
-      // Generate circle points for the zone area
-      const circlePoints = [];
-      const steps = 64;
-      for (let i = 0; i < steps; i++) {
-        const angle = (i / steps) * 2 * Math.PI;
-        const dx = radiusInKm * Math.cos(angle) / 111.32; // rough conversion to degrees longitude
-        const dy = radiusInKm * Math.sin(angle) / 110.54; // rough conversion to degrees latitude
-        circlePoints.push([center[0] + dx, center[1] + dy]);
-      }
-      circlePoints.push(circlePoints[0]); // close the circle
+      console.log('Adding zones to map:', dbZones);
 
-      // Add source for the zone circle
-      map.current!.addSource(zoneId, {
-        type: 'geojson',
-        data: {
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [circlePoints]
-          },
-          properties: {
-            name: zone.name,
-            type: zone.zone_type,
-            radius: zone.radius_meters
+      // Clear existing zone markers
+      zoneMarkers.current.forEach(marker => marker.remove());
+      zoneMarkers.current = [];
+
+      dbZones.forEach(zone => {
+        console.log('Creating zone area for:', zone.name, zone.latitude, zone.longitude, zone.radius_meters);
+        
+        // Add a source and layer for the actual zone coverage area
+        const zoneId = `zone-${zone.id}`;
+        
+        // Remove existing layers if they exist
+        if (map.current!.getLayer(`${zoneId}-fill`)) {
+          map.current!.removeLayer(`${zoneId}-fill`);
+        }
+        if (map.current!.getLayer(`${zoneId}-border`)) {
+          map.current!.removeLayer(`${zoneId}-border`);
+        }
+        if (map.current!.getSource(zoneId)) {
+          map.current!.removeSource(zoneId);
+        }
+
+        // Create circle data for the zone's actual radius
+        const center = [Number(zone.longitude), Number(zone.latitude)];
+        const radiusInKm = (zone.radius_meters || 100) / 1000;
+        
+        // Generate circle points for the zone area
+        const circlePoints = [];
+        const steps = 64;
+        for (let i = 0; i < steps; i++) {
+          const angle = (i / steps) * 2 * Math.PI;
+          const dx = radiusInKm * Math.cos(angle) / 111.32; // rough conversion to degrees longitude
+          const dy = radiusInKm * Math.sin(angle) / 110.54; // rough conversion to degrees latitude
+          circlePoints.push([center[0] + dx, center[1] + dy]);
+        }
+        circlePoints.push(circlePoints[0]); // close the circle
+
+        // Add source for the zone circle
+        map.current!.addSource(zoneId, {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [circlePoints]
+            },
+            properties: {
+              name: zone.name,
+              type: zone.zone_type,
+              radius: zone.radius_meters
+            }
           }
-        }
-      });
+        });
 
-      // Add fill layer for zone area
-      map.current!.addLayer({
-        id: `${zoneId}-fill`,
-        type: 'fill',
-        source: zoneId,
-        paint: {
-          'fill-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
-                       zone.zone_type === 'restaurant' ? '#EF4444' :
-                       zone.zone_type === 'cafe' ? '#F59E0B' :
-                       zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
-          'fill-opacity': 0.2
-        }
-      });
+        // Add fill layer for zone area
+        map.current!.addLayer({
+          id: `${zoneId}-fill`,
+          type: 'fill',
+          source: zoneId,
+          paint: {
+            'fill-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
+                         zone.zone_type === 'restaurant' ? '#EF4444' :
+                         zone.zone_type === 'cafe' ? '#F59E0B' :
+                         zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
+            'fill-opacity': 0.2
+          }
+        });
 
-      // Add border layer for zone area
-      map.current!.addLayer({
-        id: `${zoneId}-border`,
-        type: 'line',
-        source: zoneId,
-        paint: {
-          'line-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
-                       zone.zone_type === 'restaurant' ? '#EF4444' :
-                       zone.zone_type === 'cafe' ? '#F59E0B' :
-                       zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
-          'line-width': 2,
-          'line-opacity': 0.8
-        }
-      });
+        // Add border layer for zone area
+        map.current!.addLayer({
+          id: `${zoneId}-border`,
+          type: 'line',
+          source: zoneId,
+          paint: {
+            'line-color': zone.zone_type === 'bar' ? '#8B5CF6' : 
+                         zone.zone_type === 'restaurant' ? '#EF4444' :
+                         zone.zone_type === 'cafe' ? '#F59E0B' :
+                         zone.zone_type === 'park' ? '#10B981' : '#3B82F6',
+            'line-width': 2,
+            'line-opacity': 0.8
+          }
+        });
 
-      // Add zone center marker with info (not clickable for entry)
-      const zoneEl = document.createElement('div');
-      zoneEl.className = 'zone-center-marker';
-      zoneEl.style.cssText = `
-        width: 40px;
-        height: 40px;
-        background: white;
-        border: 3px solid ${zone.zone_type === 'bar' ? '#8B5CF6' : 
-                            zone.zone_type === 'restaurant' ? '#EF4444' :
-                            zone.zone_type === 'cafe' ? '#F59E0B' :
-                            zone.zone_type === 'park' ? '#10B981' : '#3B82F6'};
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 1000;
-        pointer-events: none;
-      `;
+        // Add zone center marker with info (not clickable for entry)
+        const zoneEl = document.createElement('div');
+        zoneEl.className = 'zone-center-marker';
+        zoneEl.style.cssText = `
+          width: 40px;
+          height: 40px;
+          background: white;
+          border: 3px solid ${zone.zone_type === 'bar' ? '#8B5CF6' : 
+                              zone.zone_type === 'restaurant' ? '#EF4444' :
+                              zone.zone_type === 'cafe' ? '#F59E0B' :
+                              zone.zone_type === 'park' ? '#10B981' : '#3B82F6'};
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 20px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          z-index: 1000;
+          pointer-events: none;
+        `;
+        
+        // Add zone type icon
+        const icons: Record<string, string> = {
+          cafe: '☕',
+          restaurant: '🍽️',
+          bar: '🍸',
+          office: '🏢',
+          park: '🌳',
+          gym: '💪'
+        };
+        zoneEl.textContent = icons[zone.zone_type] || '📍';
+
+        const marker = new mapboxgl.Marker(zoneEl)
+          .setLngLat([Number(zone.longitude), Number(zone.latitude)])
+          .addTo(map.current!);
+
+        // Add informational popup (shows zone info, but doesn't allow manual entry)
+        const popup = new mapboxgl.Popup({ 
+          offset: 30,
+          closeButton: true,
+          closeOnClick: false
+        }).setHTML(`
+          <div class="p-3 min-w-[200px]">
+            <h3 class="font-bold text-lg">${zone.name}</h3>
+            <p class="text-sm text-gray-600 capitalize">${zone.zone_type}</p>
+            <p class="text-xs text-gray-500 mb-2">Radius: ${zone.radius_meters}m</p>
+            <p class="text-xs text-blue-600">Move into this area to discover people nearby!</p>
+          </div>
+        `);
+
+        marker.setPopup(popup);
+        zoneMarkers.current.push(marker);
+        
+        console.log('Zone area created successfully for:', zone.name, 'with radius:', zone.radius_meters);
+      });
       
-      // Add zone type icon
-      const icons: Record<string, string> = {
-        cafe: '☕',
-        restaurant: '🍽️',
-        bar: '🍸',
-        office: '🏢',
-        park: '🌳',
-        gym: '💪'
-      };
-      zoneEl.textContent = icons[zone.zone_type] || '📍';
-
-      const marker = new mapboxgl.Marker(zoneEl)
-        .setLngLat([Number(zone.longitude), Number(zone.latitude)])
-        .addTo(map.current!);
-
-      // Add informational popup (shows zone info, but doesn't allow manual entry)
-      const popup = new mapboxgl.Popup({ 
-        offset: 30,
-        closeButton: true,
-        closeOnClick: false
-      }).setHTML(`
-        <div class="p-3 min-w-[200px]">
-          <h3 class="font-bold text-lg">${zone.name}</h3>
-          <p class="text-sm text-gray-600 capitalize">${zone.zone_type}</p>
-          <p class="text-xs text-gray-500 mb-2">Radius: ${zone.radius_meters}m</p>
-          <p class="text-xs text-blue-600">Move into this area to discover people nearby!</p>
-        </div>
-      `);
-
-      marker.setPopup(popup);
-      zoneMarkers.current.push(marker);
-      
-      console.log('Zone area created successfully for:', zone.name, 'with radius:', zone.radius_meters);
-    });
-    
-    console.log('Total zones with coverage areas created:', zoneMarkers.current.length);
+      console.log('Total zones with coverage areas created:', zoneMarkers.current.length);
+    }
   }, [dbZones]);
 
   // Check for zone entry
