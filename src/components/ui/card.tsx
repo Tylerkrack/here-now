@@ -1,79 +1,119 @@
-import * as React from "react"
+import React from 'react';
+import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { colors } from '@/lib/colors';
 
-import { cn } from "@/lib/utils"
+export interface CardProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-Card.displayName = "Card"
+export function Card({ children, style }: CardProps) {
+  return (
+    <View style={[styles.card, style]}>
+      {children}
+    </View>
+  );
+}
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
-CardHeader.displayName = "CardHeader"
+export interface CardHeaderProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
-CardTitle.displayName = "CardTitle"
+export function CardHeader({ children, style }: CardHeaderProps) {
+  return (
+    <View style={[styles.header, style]}>
+      {children}
+    </View>
+  );
+}
 
-const CardDescription = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, ...props }, ref) => (
-  <p
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-))
-CardDescription.displayName = "CardDescription"
+export interface CardTitleProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
 
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
-CardContent.displayName = "CardContent"
+export function CardTitle({ children, style }: CardTitleProps) {
+  return (
+    <Text style={[styles.title, style]}>
+      {children}
+    </Text>
+  );
+}
 
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
-CardFooter.displayName = "CardFooter"
+export interface CardDescriptionProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+export function CardDescription({ children, style }: CardDescriptionProps) {
+  return (
+    <Text style={[styles.description, style]}>
+      {children}
+    </Text>
+  );
+}
+
+export interface CardContentProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
+
+export function CardContent({ children, style }: CardContentProps) {
+  return (
+    <View style={[styles.content, style]}>
+      {children}
+    </View>
+  );
+}
+
+export interface CardFooterProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
+
+export function CardFooter({ children, style }: CardFooterProps) {
+  return (
+    <View style={[styles.footer, style]}>
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  header: {
+    padding: 16,
+    paddingBottom: 8,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.cardForeground,
+    marginBottom: 4,
+  },
+  description: {
+    fontSize: 14,
+    color: colors.muted.foreground,
+  },
+  content: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  footer: {
+    padding: 16,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+});

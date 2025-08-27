@@ -1,36 +1,85 @@
 import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import { View, Text, ViewStyle, TextStyle } from "react-native"
 
-import { cn } from "@/lib/utils"
+export interface BadgeProps {
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline'
+  children?: React.ReactNode
+  style?: ViewStyle
+}
 
-const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-  {
-    variants: {
-      variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
+const Badge = React.forwardRef<View, BadgeProps>(
+  ({ variant = 'default', children, style }, ref) => {
+    const badgeStyle = getBadgeStyle(variant)
+    const textStyle = getTextStyle(variant)
+    
+    return (
+      <View
+        ref={ref}
+        style={[badgeStyle, style]}
+      >
+        {typeof children === 'string' ? (
+          <Text style={textStyle}>{children}</Text>
+        ) : (
+          children
+        )}
+      </View>
+    )
   }
 )
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>,
-    VariantProps<typeof badgeVariants> {}
+Badge.displayName = "Badge"
 
-function Badge({ className, variant, ...props }: BadgeProps) {
-  return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props} />
-  )
+function getBadgeStyle(variant: string): ViewStyle {
+  const baseStyle: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  }
+
+  switch (variant) {
+    case 'secondary':
+      baseStyle.backgroundColor = '#f3f4f6'
+      break
+    case 'destructive':
+      baseStyle.backgroundColor = '#dc2626'
+      break
+    case 'outline':
+      baseStyle.backgroundColor = 'transparent'
+      baseStyle.borderWidth = 1
+      baseStyle.borderColor = '#d1d5db'
+      break
+    default:
+      baseStyle.backgroundColor = '#3b82f6'
+  }
+
+  return baseStyle
 }
 
-export { Badge, badgeVariants }
+function getTextStyle(variant: string): TextStyle {
+  const baseStyle: TextStyle = {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
+  }
+
+  switch (variant) {
+    case 'secondary':
+      baseStyle.color = '#374151'
+      break
+    case 'destructive':
+      baseStyle.color = '#ffffff'
+      break
+    case 'outline':
+      baseStyle.color = '#374151'
+      break
+    default:
+      baseStyle.color = '#ffffff'
+  }
+
+  return baseStyle
+}
+
+export { Badge }

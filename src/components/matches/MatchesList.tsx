@@ -1,24 +1,22 @@
+import React from 'react';
+import { View, Text, TouchableOpacity, Image, StyleSheet, ScrollView } from 'react-native';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
-import { MessageCircle, Clock, MapPin, Search, Heart } from "lucide-react";
 import AppLogo from "@/components/ui/app-logo";
 
 interface Match {
   id: string;
   name: string;
   age: number;
-  photo: string;
-  intents: Intent[];
-  status: "waiting_to_leave_zone" | "chat_later" | "start_chat" | "active_chat";
-  lastMessage?: {
-    content: string;
-    timestamp: Date;
-    isRead: boolean;
-  };
+  image?: string;
+  lastMessage?: string;
+  lastMessageTime?: string;
   unreadCount: number;
+  intents: Intent[];
+  isOnline: boolean;
 }
 
 interface MatchesListProps {
@@ -27,249 +25,243 @@ interface MatchesListProps {
 }
 
 export function MatchesList({ matches, onChatWith }: MatchesListProps) {
-  // Separate matches into new matches and active chats
-  const newMatches = matches.filter(match => 
-    match.status === "start_chat" || match.status === "chat_later" || match.status === "waiting_to_leave_zone"
-  );
-  
-  const activeChats = matches.filter(match => 
-    match.status === "active_chat" && match.lastMessage
-  );
-  const getStatusDisplay = (status: Match["status"]) => {
-    switch (status) {
-      case "waiting_to_leave_zone":
-        return {
-          text: "Waiting until you leave zone",
-          icon: <MapPin className="w-3 h-3" />,
-          variant: "secondary" as const
-        };
-      case "chat_later":
-        return {
-          text: "Chat Later",
-          icon: <Clock className="w-3 h-3" />,
-          variant: "outline" as const
-        };
-      case "start_chat":
-        return {
-          text: "Start Chat",
-          icon: <MessageCircle className="w-3 h-3" />,
-          variant: "default" as const
-        };
-      case "active_chat":
-        return {
-          text: "Active Chat",
-          icon: <MessageCircle className="w-3 h-3" />,
-          variant: "default" as const
-        };
-    }
-  };
-
-  // Sort active chats by most recent message
-  const sortedActiveChats = [...activeChats].sort((a, b) => {
-    if (a.lastMessage && b.lastMessage) {
-      return b.lastMessage.timestamp.getTime() - a.lastMessage.timestamp.getTime();
-    }
-    return 0;
-  });
-
-  if (matches.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full p-8">
-        <div className="text-center">
-          <div className="text-6xl mb-4">💕</div>
-          <h3 className="text-xl font-bold mb-2">No matches yet</h3>
-          <p className="text-muted-foreground">
-            Start exploring zones to meet new people!
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full">
-      {/* Header with Logo */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <AppLogo size="md" />
-        <h1 className="text-xl font-semibold">Matches</h1>
-        <div className="w-8" /> {/* Spacer for centering */}
-      </div>
-      
-      {/* Search bar */}
-      {(activeChats.length > 0 || newMatches.length > 3) && (
-        <div className="p-4 border-b">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-            <Input
-              placeholder="Search matches and conversations..."
-              className="pl-10"
-            />
-          </div>
-        </div>
-      )}
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <AppLogo />
+        <Text style={styles.headerTitle}>Matches</Text>
+        <View style={styles.headerSpacer} />
+      </View>
 
-      <div className="flex-1 overflow-y-auto">
-        {/* Active Chats Section */}
-        {activeChats.length > 0 && (
-          <div className="p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <MessageCircle className="w-4 h-4 text-primary" />
-              <h2 className="font-semibold text-primary">Active Conversations</h2>
-            </div>
-            <div className="space-y-2">
-              {sortedActiveChats.map((match) => {
-                const intentOverlap = match.intents.filter(intent => 
-                  ["dating", "friendship"].includes(intent)
-                );
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Input
+          placeholder="Search matches..."
+          style={styles.searchInput}
+        />
+      </View>
 
-                return (
-                  <Card
-                    key={match.id}
-                    className="p-4 hover:shadow-card transition-all cursor-pointer border-0 shadow-none hover:bg-muted/50"
-                    onClick={() => onChatWith(match.id)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      {/* Profile photo with online indicator */}
-                      <div className="relative">
-                        <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-card">
-                          {match.photo ? (
-                            <img
-                              src={match.photo}
-                              alt={match.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xl">
-                              👤
-                            </div>
-                          )}
-                        </div>
-                        
-                        {match.unreadCount > 0 && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                            <span className="text-xs text-primary-foreground font-medium">
-                              {match.unreadCount > 9 ? "9+" : match.unreadCount}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+      {/* Matches List */}
+      <ScrollView style={styles.matchesList} showsVerticalScrollIndicator={false}>
+        {matches.map((match) => (
+          <TouchableOpacity
+            key={match.id}
+            style={styles.matchItem}
+            onPress={() => onChatWith(match.id)}
+          >
+            <View style={styles.matchAvatar}>
+              {match.image ? (
+                <Image source={{ uri: match.image }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <Text style={styles.avatarText}>
+                    {match.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              {match.isOnline && <View style={styles.onlineIndicator} />}
+            </View>
 
-                      {/* Chat info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold truncate">
-                            {match.name}, {match.age}
-                          </h3>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
-                            {match.lastMessage && match.lastMessage.timestamp.toLocaleDateString() === new Date().toLocaleDateString()
-                              ? match.lastMessage.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                              : match.lastMessage?.timestamp.toLocaleDateString([], { month: "short", day: "numeric" })
-                            }
-                          </span>
-                        </div>
+            <View style={styles.matchInfo}>
+              <View style={styles.matchHeader}>
+                <Text style={styles.matchName}>{match.name}, {match.age}</Text>
+                {match.unreadCount > 0 && (
+                  <Badge variant="destructive" style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>{match.unreadCount}</Text>
+                  </Badge>
+                )}
+              </View>
 
-                        {intentOverlap.length > 0 && (
-                          <div className="flex space-x-1 mb-2">
-                            {intentOverlap.map((intent) => (
-                              <IntentBadge key={intent} intent={intent} />
-                            ))}
-                          </div>
-                        )}
+              <View style={styles.intentsContainer}>
+                {match.intents.map((intent) => (
+                  <IntentBadge key={intent} intent={intent} />
+                ))}
+              </View>
 
-                        <div className="flex items-center justify-between">
-                          <p className={`text-sm truncate flex-1 mr-2 ${
-                            match.lastMessage?.isRead ? "text-muted-foreground" : "text-foreground font-medium"
-                          }`}>
-                            {match.lastMessage?.content}
-                          </p>
-                          
-                          {match.lastMessage && !match.lastMessage.isRead && (
-                            <div className="w-2 h-2 bg-primary rounded-full"></div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
+              {match.lastMessage && (
+                <View style={styles.lastMessageContainer}>
+                  <Text style={styles.lastMessage} numberOfLines={1}>
+                    {match.lastMessage}
+                  </Text>
+                  {match.lastMessageTime && (
+                    <Text style={styles.lastMessageTime}>
+                      {match.lastMessageTime}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.matchActions}>
+              <Button
+                variant="ghost"
+                style={styles.chatButton}
+                onPress={() => onChatWith(match.id)}
+              >
+                <Text style={styles.chatButtonText}>Chat</Text>
+              </Button>
+            </View>
+          </TouchableOpacity>
+        ))}
+
+        {matches.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No matches yet</Text>
+            <Text style={styles.emptySubtitle}>
+              Start exploring zones to find people near you!
+            </Text>
+          </View>
         )}
-
-        {/* New Matches Section */}
-        {newMatches.length > 0 && (
-          <div className="p-4">
-            <div className="flex items-center space-x-2 mb-3">
-              <Heart className="w-4 h-4 text-dating" />
-              <h2 className="font-semibold text-dating">New Matches</h2>
-            </div>
-            <div className="space-y-2">
-              {newMatches.map((match) => {
-                const statusDisplay = getStatusDisplay(match.status);
-                const intentOverlap = match.intents.filter(intent => 
-                  ["dating", "friendship"].includes(intent)
-                );
-
-                return (
-                  <Card
-                    key={match.id}
-                    className="p-4 hover:shadow-card transition-shadow cursor-pointer"
-                    onClick={() => {
-                      if (match.status === "start_chat") {
-                        onChatWith(match.id);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center space-x-4">
-                      {/* Profile photo */}
-                      <div className="relative">
-                        <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-card">
-                          {match.photo ? (
-                            <img
-                              src={match.photo}
-                              alt={match.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-2xl">
-                              👤
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Match info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold truncate">
-                            {match.name}, {match.age}
-                          </h3>
-                          <Badge variant={statusDisplay.variant} className="text-xs">
-                            {statusDisplay.icon}
-                            <span className="ml-1">{statusDisplay.text}</span>
-                          </Badge>
-                        </div>
-
-                        {intentOverlap.length > 0 && (
-                          <div className="flex space-x-1 mb-2">
-                            {intentOverlap.map((intent) => (
-                              <IntentBadge key={intent} intent={intent} />
-                            ))}
-                          </div>
-                        )}
-
-                        <p className="text-sm text-muted-foreground">
-                          {match.status === "start_chat" ? "Tap to start chatting!" : "New match"}
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      </ScrollView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  searchContainer: {
+    padding: 16,
+    paddingBottom: 8,
+  },
+  searchInput: {
+    width: '100%',
+  },
+  matchesList: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  matchItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  matchAvatar: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  avatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10b981',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  matchInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  matchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  matchName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  unreadBadge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  unreadText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  intentsContainer: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+  },
+  lastMessageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  lastMessage: {
+    fontSize: 14,
+    color: '#6b7280',
+    flex: 1,
+    marginRight: 8,
+  },
+  lastMessageTime: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  matchActions: {
+    alignItems: 'center',
+  },
+  chatButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  chatButtonText: {
+    color: '#3b82f6',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+});

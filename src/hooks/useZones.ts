@@ -20,6 +20,7 @@ export const useZones = () => {
   const fetchZones = async () => {
     try {
       setLoading(true);
+      console.log('useZones: Fetching zones...');
       const { data, error } = await supabase
         .from('zones')
         .select('*')
@@ -27,8 +28,10 @@ export const useZones = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('useZones: Zones data received:', data?.length || 0, 'zones');
       setZones(data || []);
     } catch (err: any) {
+      console.error('useZones: Error fetching zones:', err.message);
       setError(err.message);
     } finally {
       setLoading(false);

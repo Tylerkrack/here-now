@@ -1,442 +1,514 @@
-import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { MapPin, Users, Settings, User, AlertCircle, MapIcon } from "lucide-react";
-import AppLogo from "@/components/ui/app-logo";
-import { useLocation } from "@/hooks/useLocation";
-import { useZones } from "@/hooks/useZones";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/components/ui/use-toast";
+import React, { useEffect, useState, useRef } from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
+import MapView, { Circle, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { useZones } from '@/hooks/useZones';
+import { colors } from '@/lib/colors';
 
 interface RealMapViewProps {
   onEnterZone: (zoneId: string) => void;
-  onOpenProfile: () => void;
   onOpenSettings: () => void;
 }
 
-export function RealMapView({ onEnterZone, onOpenProfile, onOpenSettings }: RealMapViewProps) {
-  
-  
-  const { user } = useAuth();
-  const { location, error: locationError, loading: locationLoading, getCurrentLocation, isInZone } = useLocation();
-  const { zones: dbZones, loading: zonesLoading } = useZones();
-  const { toast } = useToast();
-  
-  console.log('🗺️ RealMapView state:', { 
-    user: !!user, 
-    location: !!location, 
-    locationError, 
-    locationLoading, 
-    zonesCount: dbZones.length,
-    zonesLoading 
+export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [currentRegion, setCurrentRegion] = useState<Region>({
+    latitude: 37.7749,
+    longitude: -122.4194,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
   });
-
-  // Add alert to force debug visibility
-  if (dbZones.length > 0) {
-    console.log('📍 DEBUG: Found zones:', dbZones.map(z => `${z.name} (${z.latitude}, ${z.longitude})`));
-  }
   
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const userMarker = useRef<mapboxgl.Marker | null>(null);
-  const zoneMarkers = useRef<mapboxgl.Marker[]>([]);
-  
-  const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [showTokenInput, setShowTokenInput] = useState(false);
-  const [tokenLoading, setTokenLoading] = useState(true);
-  const [currentZone, setCurrentZone] = useState<any>(null);
-  const [showZoneNotification, setShowZoneNotification] = useState(false);
+  const { zones, loading: zonesLoading } = useZones();
+  const mapRef = useRef<MapView>(null);
 
-  // Fetch Mapbox token from Supabase Edge Function
-  useEffect(() => {
-    const fetchMapboxToken = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('get-mapbox-token');
-        
-        if (error) throw error;
-        
-        if (data?.token) {
-          setMapboxToken(data.token);
-          setTokenLoading(false);
-        } else {
-          throw new Error('No token received');
-        }
-      } catch (error) {
-        console.error('Error fetching Mapbox token:', error);
-        setShowTokenInput(true);
-        setTokenLoading(false);
-        toast({
-          title: "Mapbox Token Required",
-          description: "Please enter your Mapbox token manually",
-          variant: "destructive"
-        });
+  const getCurrentLocation = async () => {
+    try {
+      setLoading(true);
+      
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission denied');
+        setLoading(false);
+        return;
       }
-    };
 
-    fetchMapboxToken();
-  }, []);
-
-  // Initialize map when token is available
-  useEffect(() => {
-    if (!mapContainer.current || !mapboxToken || showTokenInput) return;
-
-    console.log('🗺️ Initializing map...');
-    initializeMap();
-  }, [mapboxToken, showTokenInput]);
-
-  const initializeMap = () => {
-    if (!mapContainer.current || !mapboxToken) return;
-
-    mapboxgl.accessToken = mapboxToken;
-    
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-96.0, 39.5], // Center of USA
-      zoom: 4,
-      pitch: 0,
-    });
-
-    map.current.addControl(
-      new mapboxgl.NavigationControl({
-        visualizePitch: true,
-      }),
-      'top-right'
-    );
-
-    map.current.addControl(
-      new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        trackUserLocation: true,
-        showUserHeading: true
-      }),
-      'top-right'
-    );
-
-    setShowTokenInput(false);
-    toast({
-      title: "Map loaded!",
-      description: "Map is ready",
-    });
-
-    console.log('✅ Map initialized successfully');
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High
+      });
+      
+      setLocation(position);
+      
+      // Update map region to current location
+      const newRegion = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+      setCurrentRegion(newRegion);
+      
+      setError(null);
+      setLoading(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get location';
+      setError(errorMessage);
+      setLoading(false);
+    }
   };
 
-  // Update user location on map
   useEffect(() => {
-    console.log('📍 Location effect triggered:', { location, locationLoading, locationError });
-    
-    if (!location && !locationLoading && !locationError) {
-      console.log('📍 Requesting location...');
-      getCurrentLocation();
-    }
-    
-    if (!map.current || !location) {
-      console.log('📍 Map or location not ready:', { mapReady: !!map.current, locationReady: !!location });
-      return;
-    }
+    getCurrentLocation();
+  }, []);
 
-    console.log('📍 Adding user location to map:', location);
-
-    // Move map to user location
-    map.current.flyTo({
-      center: [location.longitude, location.latitude],
-      zoom: 15,
-      duration: 2000
-    });
-
-    // Add or update user marker
-    if (userMarker.current) {
-      userMarker.current.remove();
-    }
-
-    const userEl = document.createElement('div');
-    userEl.className = 'user-marker';
-    userEl.style.cssText = `
-      width: 30px;
-      height: 30px;
-      background: #3b82f6;
-      border: 4px solid white;
-      border-radius: 50%;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      animation: pulse 2s infinite;
-      z-index: 1000;
-    `;
-
-    userMarker.current = new mapboxgl.Marker(userEl)
-      .setLngLat([location.longitude, location.latitude])
-      .addTo(map.current);
-
-    console.log('✅ User location marker added');
-  }, [location, getCurrentLocation, locationLoading, locationError]);
-
-  // Add zones as proper radius circles (only once when map loads)
+  // Check if user is in any zones
   useEffect(() => {
-    if (!map.current || !dbZones.length) return;
-
-    const addZonesToMap = () => {
-      // Remove existing zone layers if they exist
-      try {
-        if (map.current!.getLayer('zones-fill')) map.current!.removeLayer('zones-fill');
-        if (map.current!.getLayer('zones-outline')) map.current!.removeLayer('zones-outline');
-        if (map.current!.getSource('zones')) map.current!.removeSource('zones');
-      } catch (e) {
-        // Layers don't exist yet, continue
-      }
-
-      console.log('🎯 Adding zone circles with actual radius to map:', dbZones.length);
-
-      // Create circle polygons for each zone based on radius_meters
-      const zoneFeatures = dbZones.map(zone => {
-        const center = [Number(zone.longitude), Number(zone.latitude)];
-        const radiusInKm = zone.radius_meters / 1000;
+    if (location && zones.length > 0) {
+      const userLat = location.coords.latitude;
+      const userLng = location.coords.longitude;
+      
+      // Check if user is within any zone
+      const enteredZone = zones.find(zone => {
+        const distance = Math.sqrt(
+          Math.pow(userLat - zone.latitude, 2) + 
+          Math.pow(userLng - zone.longitude, 2)
+        ) * 111000; // Convert to meters (roughly)
         
-        // Create circle polygon
-        const points = 64;
-        const coords = [];
-        for (let i = 0; i < points; i++) {
-          const angle = (i * 360) / points;
-          const lat = center[1] + (radiusInKm / 111.32) * Math.cos(angle * Math.PI / 180);
-          const lng = center[0] + (radiusInKm / (111.32 * Math.cos(center[1] * Math.PI / 180))) * Math.sin(angle * Math.PI / 180);
-          coords.push([lng, lat]);
-        }
-        coords.push(coords[0]); // Close the polygon
-
-        return {
-          type: 'Feature' as const,
-          properties: {
-            id: zone.id,
-            name: zone.name,
-            type: zone.zone_type,
-            radius: zone.radius_meters
-          },
-          geometry: {
-            type: 'Polygon' as const,
-            coordinates: [coords]
-          }
-        };
+        return distance <= zone.radius_meters;
       });
-
-      // Add zones source
-      map.current!.addSource('zones', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: zoneFeatures
-        }
-      });
-
-      // Add zone fill
-      map.current!.addLayer({
-        id: 'zones-fill',
-        type: 'fill',
-        source: 'zones',
-        paint: {
-          'fill-color': '#8B5CF6',
-          'fill-opacity': 0.2
-        }
-      });
-
-      // Add zone outline
-      map.current!.addLayer({
-        id: 'zones-outline',
-        type: 'line',
-        source: 'zones',
-        paint: {
-          'line-color': '#8B5CF6',
-          'line-width': 3,
-          'line-opacity': 0.8
-        }
-      });
-
-      console.log('✅ Zone circles with actual radius added to map');
-    };
-
-    // Only add zones once when map is loaded
-    if (map.current.isStyleLoaded()) {
-      addZonesToMap();
-    } else {
-      map.current.once('load', addZonesToMap);
+      
+      if (enteredZone) {
+        console.log('User entered zone:', enteredZone.id);
+        onEnterZone(enteredZone.id);
+      }
     }
-  }, [dbZones]);
+  }, [location, zones, onEnterZone]);
 
-  // Check for zone entry/exit
-  useEffect(() => {
-    if (!location || !dbZones.length) return;
+  const handleZoomIn = () => {
+    if (mapRef.current) {
+      const newRegion = {
+        ...currentRegion,
+        latitudeDelta: currentRegion.latitudeDelta * 0.5,
+        longitudeDelta: currentRegion.longitudeDelta * 0.5,
+      };
+      mapRef.current.animateToRegion(newRegion, 300);
+      setCurrentRegion(newRegion);
+    }
+  };
 
-    const currentZones = dbZones.filter(zone => 
-      isInZone(Number(zone.latitude), Number(zone.longitude), zone.radius_meters)
+  const handleZoomOut = () => {
+    if (mapRef.current) {
+      const newRegion = {
+        ...currentRegion,
+        latitudeDelta: currentRegion.latitudeDelta * 2,
+        longitudeDelta: currentRegion.longitudeDelta * 2,
+      };
+      mapRef.current.animateToRegion(newRegion, 300);
+      setCurrentRegion(newRegion);
+    }
+  };
+
+  const handleMyLocation = () => {
+    if (location && mapRef.current) {
+      const newRegion = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+      };
+      mapRef.current.animateToRegion(newRegion, 500);
+      setCurrentRegion(newRegion);
+    }
+  };
+
+  const getZoneColor = (zoneType: string) => {
+    switch (zoneType) {
+      case 'cafe': return 'rgba(59, 130, 246, 0.2)';
+      case 'restaurant': return 'rgba(16, 185, 129, 0.2)';
+      case 'bar': return 'rgba(168, 85, 247, 0.2)';
+      case 'office': return 'rgba(245, 158, 11, 0.2)';
+      case 'park': return 'rgba(34, 197, 94, 0.2)';
+      default: return 'rgba(139, 92, 246, 0.2)';
+    }
+  };
+
+  const getZoneBorderColor = (zoneType: string) => {
+    switch (zoneType) {
+      case 'cafe': return '#3B82F6';
+      case 'restaurant': return '#10B981';
+      case 'bar': return '#A855F7';
+      case 'office': return '#F59E0B';
+      case 'park': return '#22C55E';
+      default: return '#8B5CF6';
+    }
+  };
+
+  if (loading || zonesLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <View style={styles.loadingCard}>
+            <Text style={styles.loadingIcon}>🗺️</Text>
+            <Text style={styles.loadingTitle}>Loading Map</Text>
+            <Text style={styles.loadingSubtitle}>Setting up your map...</Text>
+          </View>
+        </View>
+      </View>
     );
+  }
 
-    if (currentZones.length > 0 && (!currentZone || currentZone.id !== currentZones[0].id)) {
-      const newZone = currentZones[0];
-      setCurrentZone(newZone);
-      setShowZoneNotification(true);
-      onEnterZone(newZone.id);
-      
-      toast({
-        title: `Entered ${newZone.name}`,
-        description: `You're now in the ${newZone.zone_type} zone`,
-      });
-
-      console.log('🎯 Entered zone:', newZone.name);
-      
-      // Hide notification after 3 seconds
-      setTimeout(() => setShowZoneNotification(false), 3000);
-    } else if (currentZones.length === 0 && currentZone) {
-      console.log('🚪 Left zone:', currentZone.name);
-      setCurrentZone(null);
-      setShowZoneNotification(false);
-    }
-  }, [location, dbZones, currentZone, isInZone, onEnterZone, toast]);
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <View style={styles.errorCard}>
+            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.errorTitle}>Location Error</Text>
+            <Text style={styles.errorSubtitle}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={getCurrentLocation}>
+              <Text style={styles.retryButtonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   return (
-    <div className="relative h-screen bg-gradient-to-br from-muted/20 to-muted/40 overflow-hidden">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4">
-        <div className="flex items-center space-x-2">
-          <AppLogo size="md" />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onOpenProfile}
-            className="bg-background/80 backdrop-blur-sm shadow-card"
-          >
-            <User className="w-5 h-5" />
-          </Button>
-        </div>
+    <View style={styles.container}>
+      {/* Header - matches web app exactly */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.appLogoContainer}>
+            <Text style={styles.appLogo}>HN</Text>
+          </View>
+        </View>
         
-        <div className="text-center">
-          <h1 className="text-lg font-bold text-foreground">Discover</h1>
-          <p className="text-sm text-muted-foreground">Find zones nearby</p>
-        </div>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Discover</Text>
+          <Text style={styles.headerSubtitle}>Find zones nearby</Text>
+        </View>
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onOpenSettings}
-          className="bg-background/80 backdrop-blur-sm shadow-card"
+        <TouchableOpacity
+          onPress={onOpenSettings}
+          style={styles.headerButton}
         >
-          <Settings className="w-5 h-5" />
-        </Button>
-      </div>
+          <Text style={styles.headerButtonText}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Loading State */}
-      {tokenLoading && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/90 backdrop-blur-sm">
-          <Card className="p-6 max-w-md w-full mx-4">
-            <div className="space-y-4 text-center">
-              <MapIcon className="w-12 h-12 mx-auto text-primary animate-pulse" />
-              <h2 className="text-xl font-bold">Loading Map</h2>
-              <p className="text-sm text-muted-foreground">
-                Setting up your map...
-              </p>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* Map */}
+      <MapView
+        ref={mapRef}
+        style={styles.map}
+        provider={PROVIDER_GOOGLE}
+        initialRegion={currentRegion}
+        showsUserLocation={true}
+        showsMyLocationButton={false}
+        followsUserLocation={false}
+        showsCompass={true}
+        showsScale={true}
+        showsBuildings={true}
+        showsTraffic={false}
+        showsIndoors={true}
+        mapType="standard"
+        zoomEnabled={true}
+        scrollEnabled={true}
+        rotateEnabled={true}
+        pitchEnabled={true}
+      >
+        {/* Zone Circles */}
+        {zones.map((zone) => (
+          <Circle
+            key={zone.id}
+            center={{
+              latitude: zone.latitude,
+              longitude: zone.longitude,
+            }}
+            radius={zone.radius_meters}
+            fillColor={getZoneColor(zone.zone_type)}
+            strokeColor={getZoneBorderColor(zone.zone_type)}
+            strokeWidth={3}
+          />
+        ))}
+      </MapView>
 
-      {/* Mapbox Token Input */}
-      {showTokenInput && !tokenLoading && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-background/90 backdrop-blur-sm">
-          <Card className="p-6 max-w-md w-full mx-4">
-            <div className="space-y-4">
-              <div className="text-center">
-                <MapIcon className="w-12 h-12 mx-auto mb-4 text-primary" />
-                <h2 className="text-xl font-bold">Map Setup</h2>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Enter your Mapbox token
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Mapbox Public Token</label>
-                <Input
-                  type="text"
-                  placeholder="pk.eyJ1..."
-                  value={mapboxToken}
-                  onChange={(e) => setMapboxToken(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Get your free token at{' '}
-                  <a 
-                    href="https://mapbox.com/" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    mapbox.com
-                  </a>
-                </p>
-              </div>
-              
-              <Button 
-                onClick={initializeMap}
-                disabled={!mapboxToken.trim()}
-                className="w-full"
+      {/* Map Controls - matches web app exactly */}
+      <View style={styles.mapControls}>
+        <TouchableOpacity style={styles.controlButton} onPress={handleZoomIn}>
+          <Text style={styles.controlButtonText}>+</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.controlButton} onPress={handleZoomOut}>
+          <Text style={styles.controlButtonText}>−</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.controlButton} onPress={handleMyLocation}>
+          <Text style={styles.controlButtonText}>📍</Text>
+        </TouchableOpacity>
+      </View>
+      
+      {/* Zone Info Panel - shows nearby zones with manual entry for testing */}
+      {zones.length > 0 && (
+        <View style={styles.zonePanel}>
+          <Text style={styles.zonePanelTitle}>Nearby Zones ({zones.length})</Text>
+          <View style={styles.zoneList}>
+            {zones.slice(0, 3).map((zone) => (
+              <TouchableOpacity
+                key={zone.id}
+                style={styles.zoneItem}
+                onPress={() => {
+                  console.log('Manual zone entry for testing:', zone.id, zone.name);
+                  onEnterZone(zone.id);
+                }}
               >
-                Load Map
-              </Button>
-            </div>
-          </Card>
-        </div>
+                <View style={styles.zoneIcon}>
+                  <Text style={styles.zoneIconText}>
+                    {zone.zone_type === 'cafe' ? '☕' : 
+                     zone.zone_type === 'restaurant' ? '🍽️' :
+                     zone.zone_type === 'bar' ? '🍺' :
+                     zone.zone_type === 'office' ? '🏢' :
+                     zone.zone_type === 'park' ? '🌳' : '📍'}
+                  </Text>
+                </View>
+                <View style={styles.zoneInfo}>
+                  <Text style={styles.zoneName}>{zone.name}</Text>
+                  <Text style={styles.zoneType}>{zone.zone_type}</Text>
+                </View>
+                <Text style={styles.zoneDistance}>Enter</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       )}
-
-      {/* Mapbox Map */}
-      <div 
-        ref={mapContainer} 
-        className="absolute inset-0 w-full h-full"
-        style={{ display: showTokenInput ? 'none' : 'block' }}
-      />
-
-      {/* Debug Info */}
-      <div className="absolute top-20 left-4 z-30">
-        <Card className="p-3 bg-background/90 backdrop-blur-sm shadow-card">
-          <div className="text-xs space-y-1">
-            <div className="font-medium text-primary">📊 Debug Info</div>
-            <div>Zones: {dbZones.length}</div>
-            <div>Location: {location ? '✅' : '❌'}</div>
-            <div>Map: {map.current ? '✅' : '❌'}</div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Zone Entry Notification */}
-      {showZoneNotification && currentZone && (
-        <div className="absolute top-32 left-4 right-4 z-30">
-          <Card className="p-4 bg-primary/90 backdrop-blur-sm shadow-card border-primary">
-            <div className="flex items-center space-x-3">
-              <div className="text-2xl">🍸</div>
-              <div className="flex-1">
-                <h3 className="font-bold text-primary-foreground">Entered {currentZone.name}</h3>
-                <p className="text-sm text-primary-foreground/80">You're now in the {currentZone.zone_type} zone</p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-          @keyframes pulse {
-            0% {
-              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-            }
-            70% {
-              box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
-            }
-            100% {
-              box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
-            }
-          }
-        `
-      }} />
-    </div>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.secondary.DEFAULT,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  loadingCard: {
+    padding: 24,
+    maxWidth: 400,
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  loadingIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  loadingTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: colors.foreground,
+  },
+  loadingSubtitle: {
+    fontSize: 14,
+    color: colors.muted.foreground,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  errorCard: {
+    padding: 24,
+    maxWidth: 400,
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: colors.destructive.DEFAULT,
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    color: colors.muted.foreground,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colors.networking.DEFAULT,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  header: {
+    position: 'absolute',
+    top: 0, // Start from very top
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 2,
+    paddingTop: 50, // Add padding to move content below status bar
+    backgroundColor: colors.white, // Solid white background
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  appLogoContainer: {
+    marginRight: 8, // Reduced from 12 to 8
+  },
+  appLogo: {
+    fontSize: 18, // Reduced from 20 to 18
+    fontWeight: 'bold',
+    color: colors.primary.DEFAULT,
+  },
+  headerButton: {
+    padding: 4, // Reduced from 6 to 4
+    borderRadius: 14, // Reduced from 16 to 14
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  headerButtonText: {
+    fontSize: 16, // Reduced from 18 to 16
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: 11, // Reduced from 12 to 11
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 0,
+  },
+  headerSubtitle: {
+    fontSize: 8, // Reduced from 9 to 8
+    color: colors.muted.foreground,
+  },
+  map: {
+    flex: 1,
+  },
+  mapControls: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -60 }],
+    zIndex: 10,
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: colors.white,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  controlButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.foreground,
+  },
+  zonePanel: {
+    position: 'absolute',
+    bottom: 70, // Reduced from 80 to 70
+    left: 6, // Reduced from 8 to 6
+    right: 6, // Reduced from 8 to 6
+    backgroundColor: colors.white,
+    borderRadius: 8, // Reduced from 10 to 8
+    padding: 6, // Reduced from 8 to 6
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  zonePanelTitle: {
+    fontSize: 11, // Reduced from 12 to 11
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 5, // Reduced from 6 to 5
+  },
+  zoneList: {
+    // Removed gap property
+  },
+  zoneItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5, // Reduced from 6 to 5
+    paddingHorizontal: 6, // Reduced from 8 to 6
+    backgroundColor: colors.secondary.DEFAULT,
+    borderRadius: 5, // Reduced from 6 to 5
+    marginBottom: 5, // Reduced from 6 to 5
+  },
+  zoneIcon: {
+    width: 24, // Reduced from 28 to 24
+    height: 24, // Reduced from 28 to 24
+    borderRadius: 12, // Reduced from 14 to 12
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6, // Reduced from 8 to 6
+  },
+  zoneIconText: {
+    fontSize: 12, // Reduced from 14 to 12
+  },
+  zoneInfo: {
+    flex: 1,
+  },
+  zoneName: {
+    fontSize: 11, // Reduced from 12 to 11
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  zoneType: {
+    fontSize: 9, // Reduced from 10 to 9
+    color: colors.muted.foreground,
+    textTransform: 'capitalize',
+  },
+  zoneDistance: {
+    fontSize: 10, // Reduced from 11 to 10
+    color: colors.primary.DEFAULT,
+    fontWeight: '500',
+  },
+});

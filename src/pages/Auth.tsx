@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
-import AppLogo from '@/components/ui/app-logo';
+import { AppLogo } from '@/components/ui/app-logo';
+import { colors } from '@/lib/colors';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,205 +15,254 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [age, setAge] = useState('');
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('signin');
+  const navigate = useRouter();
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignUp = async () => {
     setIsLoading(true);
-
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
           data: {
-            display_name: displayName,
-            age: parseInt(age)
-          }
-        }
+            full_name: displayName,
+            age: parseInt(age),
+          },
+        },
       });
 
       if (error) {
-        toast({
-          title: "Sign up failed",
-          description: error.message,
-          variant: "destructive"
-        });
-      } else if (data.user) {
-        // Create basic profile entry
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: data.user.id,
-            display_name: displayName,
-            age: parseInt(age),
-            bio: null,
-            photos: [],
-            interests: [],
-            intent: null,
-            is_active: false // Not active until profile is completed
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-        }
-
-        toast({
-          title: "Success!",
-          description: "Please check your email to verify your account, then complete your profile"
-        });
+        Alert.alert('Error', error.message);
+      } else {
+        // After successful signup, go directly to onboarding
+        navigate.replace('/onboarding');
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      });
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignIn = async () => {
     setIsLoading(true);
-
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
       if (error) {
-        toast({
-          title: "Sign in failed",
-          description: error.message,
-          variant: "destructive"
-        });
+        Alert.alert('Error', error.message);
       } else {
-        navigate('/');
+        navigate.replace('/');
       }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred",
-        variant: "destructive"
-      });
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-accent/10 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <AppLogo size="lg" />
-          </div>
-          <CardTitle className="text-2xl">Welcome to Here Now</CardTitle>
-          <CardDescription>
-            Find meaningful connections in your neighborhood
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signin-email">Email</Label>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.logoContainer}>
+          <AppLogo size="lg" />
+          <Text style={styles.title}>Here Now</Text>
+          <Text style={styles.subtitle}>Connect with people nearby</Text>
+        </View>
+
+        <View style={styles.tabsContainer}>
+          <View style={styles.tabsList}>
+            <TouchableOpacity
+              style={[styles.tabTrigger, activeTab === 'signin' && styles.tabTriggerActive]}
+              onPress={() => setActiveTab('signin')}
+            >
+              <Text style={[styles.tabText, activeTab === 'signin' && styles.tabTextActive]}>
+                Sign In
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.tabTrigger, activeTab === 'signup' && styles.tabTriggerActive]}
+              onPress={() => setActiveTab('signup')}
+            >
+              <Text style={[styles.tabText, activeTab === 'signup' && styles.tabTextActive]}>
+                Sign Up
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeTab === 'signin' && (
+            <Card style={styles.card}>
+              <CardHeader>
+                <CardTitle>Welcome back</CardTitle>
+                <CardDescription>Sign in to your account</CardDescription>
+              </CardHeader>
+              <CardContent style={styles.form}>
+                <View style={styles.inputGroup}>
+                  <Label>Email</Label>
                   <Input
-                    id="signin-email"
-                    type="email"
                     placeholder="Enter your email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Label>Password</Label>
                   <Input
-                    id="signin-password"
-                    type="password"
                     placeholder="Enter your password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
+                    onChangeText={setPassword}
+                    secureTextEntry
                   />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
+                </View>
+                <Button
+                  onPress={handleSignIn}
+                  disabled={isLoading}
+                  style={styles.button}
+                >
                   {isLoading ? "Signing in..." : "Sign In"}
                 </Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Display Name</Label>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeTab === 'signup' && (
+            <Card style={styles.card}>
+              <CardHeader>
+                <CardTitle>Create an account</CardTitle>
+                <CardDescription>Enter your details to sign up</CardDescription>
+              </CardHeader>
+              <CardContent style={styles.form}>
+                <View style={styles.inputGroup}>
+                  <Label>Email</Label>
                   <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="Enter your display name"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-age">Age</Label>
-                  <Input
-                    id="signup-age"
-                    type="number"
-                    placeholder="Enter your age"
-                    min="18"
-                    max="100"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
                     placeholder="Enter your email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
+                </View>
+                <View style={styles.inputGroup}>
+                  <Label>Password</Label>
                   <Input
-                    id="signup-password"
-                    type="password"
                     placeholder="Create a password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={6}
+                    onChangeText={setPassword}
+                    secureTextEntry
                   />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Sign Up"}
+                </View>
+                <View style={styles.inputGroup}>
+                  <Label>Display Name</Label>
+                  <Input
+                    placeholder="Enter your display name"
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                  />
+                </View>
+                <View style={styles.inputGroup}>
+                  <Label>Age</Label>
+                  <Input
+                    placeholder="Enter your age"
+                    keyboardType="numeric"
+                    value={age}
+                    onChangeText={setAge}
+                  />
+                </View>
+                <Button
+                  onPress={handleSignUp}
+                  disabled={isLoading}
+                  style={styles.button}
+                >
+                  {isLoading ? "Signing up..." : "Sign Up"}
                 </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </div>
+              </CardContent>
+            </Card>
+          )}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.secondary.DEFAULT,
+    padding: 16,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: 60,
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginTop: 16,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: colors.muted.foreground,
+    marginTop: 8,
+  },
+  tabsContainer: {
+    flex: 1,
+  },
+  tabsList: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 24,
+    backgroundColor: colors.muted.DEFAULT,
+    borderRadius: 10,
+    padding: 4,
+  },
+  tabTrigger: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  tabTriggerActive: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 8,
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.muted.foreground,
+  },
+  tabTextActive: {
+    color: colors.foreground,
+  },
+  card: {
+    marginBottom: 16,
+  },
+  form: {
+    marginBottom: 16,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  button: {
+    marginTop: 8,
+  },
+});
 
 export default Auth;

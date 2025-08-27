@@ -1,53 +1,146 @@
-import * as React from "react"
-import * as TabsPrimitive from "@radix-ui/react-tabs"
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ViewStyle } from 'react-native';
+import { colors } from '@/lib/colors';
 
-import { cn } from "@/lib/utils"
+export interface TabsProps {
+  defaultValue?: string;
+  value?: string;
+  onValueChange?: (value: string) => void;
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
 
-const Tabs = TabsPrimitive.Root
+export function Tabs({ defaultValue, value, onValueChange, children, style }: TabsProps) {
+  const [activeTab, setActiveTab] = useState(value || defaultValue || '');
+  
+  const handleTabChange = (tabValue: string) => {
+    setActiveTab(tabValue);
+    if (onValueChange) {
+      onValueChange(tabValue);
+    }
+  };
 
-const TabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.List
-    ref={ref}
-    className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
-      className
-    )}
-    {...props}
-  />
-))
-TabsList.displayName = TabsPrimitive.List.displayName
+  return (
+    <View style={[styles.container, style]}>
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          if (child.type === TabsList) {
+            return React.cloneElement(child, {
+              activeTab,
+              onTabChange: handleTabChange,
+              ...(child.props as any)
+            });
+          } else if (child.type === TabsContent) {
+            return React.cloneElement(child, {
+              activeTab,
+              ...(child.props as any)
+            });
+          }
+        }
+        return child;
+      })}
+    </View>
+  );
+}
 
-const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm",
-      className
-    )}
-    {...props}
-  />
-))
-TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
+export interface TabsListProps {
+  children: React.ReactNode;
+  style?: ViewStyle;
+}
 
-const TabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-      className
-    )}
-    {...props}
-  />
-))
-TabsContent.displayName = TabsPrimitive.Content.displayName
+export function TabsList({ children, style }: TabsListProps) {
+  return (
+    <View style={[styles.tabsList, style]}>
+      {children}
+    </View>
+  );
+}
 
-export { Tabs, TabsList, TabsTrigger, TabsContent }
+export interface TabsTriggerProps {
+  value: string;
+  children: React.ReactNode;
+  activeTab?: string;
+  onTabChange?: (value: string) => void;
+  style?: ViewStyle;
+}
+
+export function TabsTrigger({ value, children, activeTab, onTabChange, style }: TabsTriggerProps) {
+  const isActive = activeTab === value;
+  
+  return (
+    <TouchableOpacity
+      style={[
+        styles.trigger,
+        isActive && styles.triggerActive,
+        style
+      ]}
+      onPress={() => onTabChange?.(value)}
+    >
+      <Text style={[
+        styles.triggerText,
+        isActive && styles.triggerTextActive
+      ]}>
+        {children}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+export interface TabsContentProps {
+  value: string;
+  children: React.ReactNode;
+  activeTab?: string;
+  style?: ViewStyle;
+}
+
+export function TabsContent({ value, children, activeTab, style }: TabsContentProps) {
+  if (activeTab !== value) {
+    return null;
+  }
+  
+  return (
+    <View style={[styles.content, style]}>
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  tabsList: {
+    flexDirection: 'row',
+    backgroundColor: colors.secondary.DEFAULT,
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 24,
+  },
+  trigger: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  triggerActive: {
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  triggerText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.muted.foreground,
+  },
+  triggerTextActive: {
+    color: colors.foreground,
+  },
+  content: {
+    flex: 1,
+  },
+});

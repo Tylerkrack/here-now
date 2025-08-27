@@ -1,22 +1,57 @@
-import * as React from "react"
+import React from 'react';
+import { TextInput, ViewStyle, TextStyle } from 'react-native';
+import { colors } from '@/lib/colors';
 
-import { cn } from "@/lib/utils"
+export interface InputProps {
+  placeholder?: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
+  secureTextEntry?: boolean;
+  keyboardType?: 'default' | 'email-address' | 'numeric' | 'phone-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  multiline?: boolean;
+  numberOfLines?: number;
+  editable?: boolean;
+  style?: ViewStyle;
+}
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
-  ({ className, type, ...props }, ref) => {
-    return (
-      <input
-        type={type}
-        className={cn(
-          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-          className
-        )}
-        ref={ref}
-        {...props}
-      />
-    )
-  }
-)
-Input.displayName = "Input"
+export function Input({ 
+  placeholder, 
+  value, 
+  onChangeText, 
+  secureTextEntry = false,
+  keyboardType = 'default',
+  autoCapitalize = 'sentences',
+  multiline = false,
+  numberOfLines = 1,
+  editable = true,
+  style 
+}: InputProps) {
+  const inputStyle: ViewStyle & TextStyle = {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    color: colors.foreground,
+    ...style
+  };
 
-export { Input }
+  return (
+    <TextInput
+      style={inputStyle}
+      placeholder={placeholder}
+      placeholderTextColor={colors.gray[400]}
+      value={value}
+      onChangeText={onChangeText}
+      secureTextEntry={secureTextEntry}
+      keyboardType={keyboardType}
+      autoCapitalize={autoCapitalize}
+      multiline={multiline}
+      numberOfLines={numberOfLines}
+      editable={editable}
+    />
+  );
+}

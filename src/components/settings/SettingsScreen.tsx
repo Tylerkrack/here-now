@@ -1,284 +1,245 @@
-import { useState } from "react";
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { 
-  ArrowLeft, 
-  Bell, 
-  Shield, 
-  Eye, 
-  LogOut, 
-  Trash2,
-  MapPin,
-  MessageCircle
-} from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import AppLogo from "@/components/ui/app-logo";
-
-interface SettingsData {
-  notifications: {
-    zoneEntry: boolean;
-    newMatches: boolean;
-    messages: boolean;
-    pushEnabled: boolean;
-  };
-  privacy: {
-    onlyShowWhenActive: boolean;
-    hideAge: boolean;
-    limitVisibility: boolean;
-  };
-}
+import { AppLogo } from "@/components/ui/app-logo";
+import { colors } from '@/lib/colors';
 
 interface SettingsScreenProps {
-  settings: SettingsData;
-  onUpdateSettings: (settings: SettingsData) => void;
-  onSignOut: () => void;
-  onDeleteAccount: () => void;
   onBack: () => void;
+  onLogout: () => void;
 }
 
-export function SettingsScreen({
-  settings,
-  onUpdateSettings,
-  onSignOut,
-  onDeleteAccount,
-  onBack
-}: SettingsScreenProps) {
-  const [currentSettings, setCurrentSettings] = useState<SettingsData>(settings);
-
-  const updateSetting = (category: keyof SettingsData, key: string, value: boolean) => {
-    const newSettings = {
-      ...currentSettings,
-      [category]: {
-        ...currentSettings[category],
-        [key]: value
-      }
-    };
-    setCurrentSettings(newSettings);
-    onUpdateSettings(newSettings);
-  };
+export function SettingsScreen({ onBack, onLogout }: SettingsScreenProps) {
+  const [notifications, setNotifications] = useState(true);
+  const [locationSharing, setLocationSharing] = useState(true);
+  const [profileVisibility, setProfileVisibility] = useState(true);
+  const [messageRequests, setMessageRequests] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center space-x-3">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <AppLogo size="sm" />
-        </div>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <AppLogo />
+        </View>
         
-        <h1 className="text-lg font-semibold">Settings</h1>
+        <Text style={styles.headerTitle}>Settings</Text>
         
-        <div className="w-10" /> {/* Spacer */}
-      </div>
+        <View style={styles.headerSpacer} />
+      </View>
 
-      <div className="p-4 space-y-6">
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Notifications */}
-        <Card className="p-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Bell className="w-5 h-5 text-primary" />
-            <Label className="text-base font-medium">Notifications</Label>
-          </div>
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionIcon}>🔔</Text>
+            <Text style={styles.sectionTitle}>Notifications</Text>
+          </View>
           
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Enable all push notifications
-                </p>
-              </div>
-              <Switch
-                checked={currentSettings.notifications.pushEnabled}
-                onCheckedChange={(checked) => 
-                  updateSetting("notifications", "pushEnabled", checked)
-                }
-              />
-            </div>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Push Notifications</Text>
+              <Text style={styles.settingDescription}>
+                Receive alerts for matches and messages
+              </Text>
+            </View>
+            <Switch
+              checked={notifications}
+              onCheckedChange={setNotifications}
+            />
+          </View>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <MapPin className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <Label>Zone Entry</Label>
-                  <p className="text-sm text-muted-foreground">
-                    When you enter zones with people
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={currentSettings.notifications.zoneEntry}
-                onCheckedChange={(checked) => 
-                  updateSetting("notifications", "zoneEntry", checked)
-                }
-                disabled={!currentSettings.notifications.pushEnabled}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>New Matches</Label>
-                <p className="text-sm text-muted-foreground">
-                  When someone likes you back
-                </p>
-              </div>
-              <Switch
-                checked={currentSettings.notifications.newMatches}
-                onCheckedChange={(checked) => 
-                  updateSetting("notifications", "newMatches", checked)
-                }
-                disabled={!currentSettings.notifications.pushEnabled}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <Label>Messages</Label>
-                  <p className="text-sm text-muted-foreground">
-                    New messages from matches
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={currentSettings.notifications.messages}
-                onCheckedChange={(checked) => 
-                  updateSetting("notifications", "messages", checked)
-                }
-                disabled={!currentSettings.notifications.pushEnabled}
-              />
-            </div>
-          </div>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Location Updates</Text>
+              <Text style={styles.settingDescription}>
+                Get notified when entering new zones
+              </Text>
+            </View>
+            <Switch
+              checked={locationSharing}
+              onCheckedChange={setLocationSharing}
+            />
+          </View>
         </Card>
 
-        {/* Privacy */}
-        <Card className="p-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <Shield className="w-5 h-5 text-primary" />
-            <Label className="text-base font-medium">Privacy & Safety</Label>
-          </div>
+        {/* Privacy & Safety */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionIcon}>🛡️</Text>
+            <Text style={styles.sectionTitle}>Privacy & Safety</Text>
+          </View>
           
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Eye className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <Label>Only appear when active</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Only show up in zones when app is open
-                  </p>
-                </div>
-              </div>
-              <Switch
-                checked={currentSettings.privacy.onlyShowWhenActive}
-                onCheckedChange={(checked) => 
-                  updateSetting("privacy", "onlyShowWhenActive", checked)
-                }
-              />
-            </div>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Profile Visibility</Text>
+              <Text style={styles.settingDescription}>
+                Control who can see your profile
+              </Text>
+            </View>
+            <Switch
+              checked={profileVisibility}
+              onCheckedChange={setProfileVisibility}
+            />
+          </View>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Hide age from profile</Label>
-                <p className="text-sm text-muted-foreground">
-                  Your age won't be visible to others
-                </p>
-              </div>
-              <Switch
-                checked={currentSettings.privacy.hideAge}
-                onCheckedChange={(checked) => 
-                  updateSetting("privacy", "hideAge", checked)
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Limit profile visibility</Label>
-                <p className="text-sm text-muted-foreground">
-                  Only show to people with matching intents
-                </p>
-              </div>
-              <Switch
-                checked={currentSettings.privacy.limitVisibility}
-                onCheckedChange={(checked) => 
-                  updateSetting("privacy", "limitVisibility", checked)
-                }
-              />
-            </div>
-          </div>
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Location Privacy</Text>
+              <Text style={styles.settingDescription}>
+                Hide your exact location from others
+              </Text>
+            </View>
+            <Switch
+              checked={!locationSharing}
+              onCheckedChange={(value) => setLocationSharing(!value)}
+            />
+          </View>
         </Card>
 
-        {/* Account Actions */}
-        <Card className="p-4">
-          <Label className="text-base font-medium mb-4 block">Account</Label>
+        {/* Communication */}
+        <Card style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionIcon}>💬</Text>
+            <Text style={styles.sectionTitle}>Communication</Text>
+          </View>
           
-          <div className="space-y-3">
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Message Requests</Text>
+              <Text style={styles.settingDescription}>
+                Allow messages from people you haven't matched with
+              </Text>
+            </View>
+            <Switch
+              checked={messageRequests}
+              onCheckedChange={setMessageRequests}
+            />
+          </View>
+        </Card>
+
+        {/* Account */}
+        <Card style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          
+          <View style={styles.settingItem}>
             <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={onSignOut}
+              variant="ghost"
+              style={styles.logoutButton}
+              onClick={onLogout}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
+              <Text style={styles.logoutIcon}>🚪</Text>
+              <Text style={styles.logoutText}>Log Out</Text>
             </Button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Account
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Account</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your
-                    account and remove all your data from our servers, including your
-                    profile, matches, and conversations.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onDeleteAccount}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Delete Account
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          </View>
         </Card>
-
-        {/* App Info */}
-        <Card className="p-4">
-          <div className="text-center text-sm text-muted-foreground">
-            <p>Social Discovery App</p>
-            <p>Version 1.0.0</p>
-            <p className="mt-2">Made with ❤️ for meaningful connections</p>
-          </div>
-        </Card>
-      </div>
-    </div>
+        
+        {/* Bottom spacer to ensure scrolling works */}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    paddingTop: 16, // Ensure consistent top padding
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.white,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    padding: 4,
+    marginRight: 12,
+  },
+  backIcon: {
+    fontSize: 20,
+    color: colors.foreground,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.foreground,
+  },
+  headerSpacer: {
+    width: 40,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+    paddingBottom: 100, // Add extra bottom padding to ensure scrolling works
+  },
+  section: {
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+  settingInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
+    marginBottom: 4,
+  },
+  settingDescription: {
+    fontSize: 12,
+    color: colors.muted.foreground,
+    lineHeight: 16,
+  },
+  logoutButton: {
+    width: '100%',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 0,
+  },
+  logoutIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  logoutText: {
+    color: colors.destructive.DEFAULT,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  bottomSpacer: {
+    height: 100, // Adjust as needed for the bottom spacer
+  },
+});

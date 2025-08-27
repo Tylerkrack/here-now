@@ -1,191 +1,322 @@
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
-import { Heart, X, ArrowLeft, MapPin } from "lucide-react";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { Button } from '@/components/ui/button';
+import { useProfilesToSwipe } from '@/hooks/useProfilesToSwipe';
+import { colors, getIntentColor } from '@/lib/colors';
 
 interface Profile {
   id: string;
-  name: string;
+  display_name: string;
   age: number;
   bio: string;
   photos: string[];
-  socialActivities: string[];
-  intents: Intent[];
-  distance: string;
+  intent: string;
+  interests: string[];
+  zone_id?: string;
 }
 
 interface SwipeDeckProps {
-  zoneName: string;
-  profiles: Profile[];
-  onSwipe: (profileId: string, direction: "left" | "right") => void;
-  onBack: () => void;
+  onSwipe: (profileId: string, direction: 'left' | 'right') => void;
 }
 
-export function SwipeDeck({ zoneName, profiles, onSwipe, onBack }: SwipeDeckProps) {
+const { width: screenWidth } = Dimensions.get('window');
+
+export function SwipeDeck({ onSwipe }: SwipeDeckProps) {
+  const { profiles, loading, error } = useProfilesToSwipe();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isAnimating, setIsAnimating] = useState(false);
 
-  const currentProfile = profiles[currentIndex];
-
-  const handleSwipe = (direction: "left" | "right") => {
-    if (isAnimating || !currentProfile) return;
-    
-    setIsAnimating(true);
-    onSwipe(currentProfile.id, direction);
-    
-    setTimeout(() => {
-      setCurrentIndex(prev => prev + 1);
-      setIsAnimating(false);
-    }, 300);
-  };
-
-  if (!currentProfile) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 text-center shadow-card">
-          <div className="text-6xl mb-4">🎉</div>
-          <h3 className="text-xl font-bold mb-2">You've seen everyone!</h3>
-          <p className="text-muted-foreground mb-6">
-            Check back later or explore another zone for more people.
-          </p>
-          <Button onClick={onBack} className="w-full">
-            Back to Map
-          </Button>
-        </Card>
-      </div>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Finding people nearby...</Text>
+      </View>
     );
   }
 
-  const intentOverlap = currentProfile.intents.filter(intent => 
-    // Simulate user having multiple intents for demo
-    ["dating", "friendship"].includes(intent)
-  );
+  if (error || !profiles || profiles.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyIcon}>👥</Text>
+        <Text style={styles.emptyTitle}>No profiles found</Text>
+        <Text style={styles.emptySubtitle}>
+          Check back later for new people in your area
+        </Text>
+      </View>
+    );
+  }
+
+  const currentProfile = profiles[currentIndex];
+
+  const handleSwipe = (direction: 'left' | 'right') => {
+    onSwipe(currentProfile.id, direction);
+    
+    if (currentIndex < profiles.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const handleSkip = () => {
+    if (currentIndex < profiles.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    }
+  };
+
+  const getIntentIcon = (intent: string) => {
+    switch (intent) {
+      case 'dating': return '💕';
+      case 'friendship': return '🤝';
+      case 'networking': return '💼';
+      default: return '👋';
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="w-5 h-5" />
+    <View style={styles.container}>
+      {/* Profile Card - matches web app exactly */}
+      <View style={styles.card}>
+        <Image 
+          source={{ 
+            uri: currentProfile.photos[0] || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face'
+          }} 
+          style={styles.profileImage}
+        />
+        
+        <View style={styles.overlay}>
+          <View style={styles.profileInfo}>
+            <View style={styles.profileHeader}>
+              <Text style={styles.profileName}>
+                {currentProfile.display_name}, {currentProfile.age}
+              </Text>
+              <View style={[styles.intentBadge, { backgroundColor: getIntentColor(currentProfile.intent) }]}>
+                <Text style={styles.intentIcon}>{getIntentIcon(currentProfile.intent)}</Text>
+                <Text style={styles.intentText}>{currentProfile.intent}</Text>
+              </View>
+            </View>
+            
+            {currentProfile.bio && (
+              <Text style={styles.profileBio} numberOfLines={3}>
+                {currentProfile.bio}
+              </Text>
+            )}
+            
+            {currentProfile.interests && currentProfile.interests.length > 0 && (
+              <View style={styles.interestsSection}>
+                <Text style={styles.interestsTitle}>Interests</Text>
+                <View style={styles.interestsList}>
+                  {currentProfile.interests.slice(0, 4).map((interest, index) => (
+                    <View key={index} style={styles.interestTag}>
+                      <Text style={styles.interestText}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* Action Buttons - matches web app exactly */}
+      <View style={styles.actionButtons}>
+        <Button 
+          variant="outline" 
+          size="lg"
+          onClick={handleSkip}
+          style={styles.skipButton}
+        >
+          <Text style={styles.skipButtonText}>⏭️ Skip</Text>
         </Button>
         
-        <div className="text-center">
-          <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4" />
-            <span>{zoneName}</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {profiles.length - currentIndex} people nearby
-          </p>
-        </div>
-
-        <div className="w-10" /> {/* Spacer */}
-      </div>
-
-      {/* Card Stack */}
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="relative w-full max-w-sm">
-          {/* Next card (background) */}
-          {profiles[currentIndex + 1] && (
-            <Card className="absolute inset-0 shadow-card transform rotate-1 scale-95 opacity-50">
-              <div className="aspect-[3/4] bg-gradient-card rounded-lg"></div>
-            </Card>
-          )}
-
-          {/* Current card */}
-          <Card 
-            className={`relative shadow-elevated transform transition-transform duration-300 ${
-              isAnimating ? "scale-105" : "scale-100"
-            }`}
-          >
-            <div className="aspect-[3/4] relative overflow-hidden rounded-t-lg bg-gradient-card">
-              {currentProfile.photos[0] ? (
-                <img
-                  src={currentProfile.photos[0]}
-                  alt={currentProfile.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-card flex items-center justify-center">
-                  <div className="text-8xl opacity-20">👤</div>
-                </div>
-              )}
-              
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              
-              {/* Basic info overlay */}
-              <div className="absolute bottom-4 left-4 right-4 text-white">
-                <h3 className="text-2xl font-bold mb-1">
-                  {currentProfile.name}, {currentProfile.age}
-                </h3>
-                <p className="text-sm opacity-90">{currentProfile.distance} away</p>
-              </div>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Intent overlap */}
-              {intentOverlap.length > 0 && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium">You both want:</span>
-                  <div className="flex space-x-1">
-                    {intentOverlap.map((intent) => (
-                      <IntentBadge key={intent} intent={intent} />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Bio */}
-              {currentProfile.bio && (
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {currentProfile.bio}
-                </p>
-              )}
-
-              {/* Social activities */}
-              {currentProfile.socialActivities.length > 0 && (
-                <div>
-                  <p className="text-sm font-medium mb-2">Enjoys:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {currentProfile.socialActivities.slice(0, 6).map((activity) => (
-                      <span
-                        key={activity}
-                        className="text-xs bg-muted px-2 py-1 rounded-full"
-                      >
-                        {activity}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex items-center justify-center space-x-8 p-6">
-        <Button
+        <Button 
           size="lg"
-          variant="outline"
-          className="w-16 h-16 rounded-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-          onClick={() => handleSwipe("left")}
-          disabled={isAnimating}
+          onClick={() => handleSwipe('left')}
+          style={styles.passButton}
         >
-          <X className="w-6 h-6" />
+          <Text style={styles.passButtonText}>👎 Pass</Text>
         </Button>
-
-        <Button
+        
+        <Button 
           size="lg"
-          className="w-16 h-16 rounded-full bg-gradient-primary border-0"
-          onClick={() => handleSwipe("right")}
-          disabled={isAnimating}
+          onClick={() => handleSwipe('right')}
+          style={styles.likeButton}
         >
-          <Heart className="w-6 h-6" />
+          <Text style={styles.likeButtonText}>❤️ Like</Text>
         </Button>
-      </div>
-    </div>
+      </View>
+
+      <Text style={styles.progressText}>
+        {currentIndex + 1} of {profiles.length}
+      </Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    backgroundColor: colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: colors.white,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.muted.foreground,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: colors.white,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.foreground,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.muted.foreground,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  card: {
+    width: screenWidth - 32,
+    height: (screenWidth - 32) * 1.4,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  overlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 20,
+  },
+  profileInfo: {
+    marginBottom: 16,
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.white,
+    flex: 1,
+  },
+  intentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginLeft: 12,
+  },
+  intentIcon: {
+    fontSize: 16,
+    marginRight: 6,
+  },
+  intentText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
+    textTransform: 'capitalize',
+  },
+  profileBio: {
+    fontSize: 16,
+    color: colors.white,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+  interestsSection: {
+    marginBottom: 16,
+  },
+  interestsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.white,
+    marginBottom: 8,
+  },
+  interestsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    // Removed gap property
+  },
+  interestTag: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  interestText: {
+    fontSize: 12,
+    color: colors.white,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginTop: 24,
+    marginBottom: 16,
+    // Removed gap property
+  },
+  skipButton: {
+    marginRight: 12,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  skipButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.foreground,
+  },
+  passButton: {
+    marginRight: 12,
+    backgroundColor: colors.gray[500],
+  },
+  passButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  likeButton: {
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  likeButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  progressText: {
+    fontSize: 14,
+    color: colors.muted.foreground,
+  },
+});

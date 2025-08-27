@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Here Now",
+    "slug": "here-now",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.herenow.zone",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "This app needs access to location to show nearby zones and help you discover people in your area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to show nearby zones and help you discover people in your area.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile photos.",
+        "NSCameraUsageDescription": "This app needs access to your camera to take profile photos."
+      },
+      "entitlements": {
+        "com.apple.developer.associated-domains": []
+      },
+      "usesIcloudStorage": false,
+      "usesAppleSignIn": false,
+      "deploymentTarget": "15.0"
+    },
+    "android": {
+      "package": "com.herenow.zone",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Here Now to use your location to show nearby zones and help you discover people in your area."
+        }
+      ],
+      "expo-image-picker"
+    ],
+    "scheme": "here-now",
+    "extra": {
+      "eas": {
+        "projectId": "c7124be2-ff1e-4af6-91dc-0d5f2ddf3007"
+      }
+    }
+  }
+}

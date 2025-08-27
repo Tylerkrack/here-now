@@ -11,6 +11,13 @@ export interface Profile {
   photos: string[];
   interests: string[];
   intent: string | null;
+  dating_age_min?: number;
+  dating_age_max?: number;
+  friendship_age_min?: number;
+  friendship_age_max?: number;
+  networking_age_min?: number;
+  networking_age_max?: number;
+  looking_for?: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -27,6 +34,7 @@ export const useProfile = () => {
     
     try {
       setLoading(true);
+      console.log('useProfile: Fetching profile for user:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -34,8 +42,10 @@ export const useProfile = () => {
         .maybeSingle();
 
       if (error) throw error;
+      console.log('useProfile: Profile data received:', data);
       setProfile(data);
     } catch (err: any) {
+      console.error('useProfile: Error fetching profile:', err.message);
       setError(err.message);
     } finally {
       setLoading(false);

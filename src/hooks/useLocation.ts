@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import * as Location from 'expo-location';
 
 export interface UserLocation {
   latitude: number;
@@ -11,69 +12,83 @@ export const useLocation = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const getCurrentLocation = (): Promise<UserLocation> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported by this browser'));
-        return;
+  const getCurrentLocation = async (): Promise<UserLocation> => {
+    try {
+      setLoading(true);
+      
+      // Request permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        throw new Error('Location permission denied');
       }
 
-      setLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const userLocation: UserLocation = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            timestamp: new Date()
-          };
-          setLocation(userLocation);
-          setLoading(false);
-          resolve(userLocation);
-        },
-        (error) => {
-          setError(error.message);
-          setLoading(false);
-          reject(error);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 300000 // 5 minutes
-        }
-      );
-    });
+      // Get current position
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+        timeout: 10000,
+        maximumAge: 300000 // 5 minutes
+      });
+
+      const userLocation: UserLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        timestamp: new Date()
+      };
+      
+      setLocation(userLocation);
+      setError(null);
+      setLoading(false);
+      return userLocation;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to get location';
+      setError(errorMessage);
+      setLoading(false);
+      throw err;
+    }
   };
 
   const watchLocation = () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by this browser');
-      return null;
-    }
+    let subscription: Location.LocationSubscription | null = null;
 
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          timestamp: new Date()
-        });
-        setError(null);
-      },
-      (error) => {
-        setError(error.message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 300000
+    const startWatching = async () => {
+      try {
+        // Request permissions
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Location permission denied');
+          return null;
+        }
+
+        // Start watching location
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 10000,
+            distanceInterval: 10
+          },
+          (position) => {
+            setLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              timestamp: new Date()
+            });
+            setError(null);
+          }
+        );
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to watch location';
+        setError(errorMessage);
       }
-    );
+    };
 
-    return watchId;
+    startWatching();
+    return subscription;
   };
 
-  const stopWatching = (watchId: number) => {
-    navigator.geolocation.clearWatch(watchId);
+  const stopWatching = (subscription: Location.LocationSubscription | null) => {
+    if (subscription) {
+      subscription.remove();
+    }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {

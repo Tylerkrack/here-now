@@ -1,27 +1,61 @@
-import * as React from "react"
-import * as SwitchPrimitives from "@radix-ui/react-switch"
+import React from 'react';
+import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { colors } from '@/lib/colors';
 
-import { cn } from "@/lib/utils"
+interface SwitchProps {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  disabled?: boolean;
+}
 
-const Switch = React.forwardRef<
-  React.ElementRef<typeof SwitchPrimitives.Root>,
-  React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>
->(({ className, ...props }, ref) => (
-  <SwitchPrimitives.Root
-    className={cn(
-      "peer inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
-      className
-    )}
-    {...props}
-    ref={ref}
-  >
-    <SwitchPrimitives.Thumb
-      className={cn(
-        "pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0"
-      )}
-    />
-  </SwitchPrimitives.Root>
-))
-Switch.displayName = SwitchPrimitives.Root.displayName
+export function Switch({ checked, onCheckedChange, disabled = false }: SwitchProps) {
+  return (
+    <TouchableOpacity
+      style={[
+        styles.container,
+        checked && styles.containerChecked,
+        disabled && styles.disabled
+      ]}
+      onPress={() => !disabled && onCheckedChange(!checked)}
+      disabled={disabled}
+      activeOpacity={0.7}
+    >
+      <View style={[
+        styles.thumb,
+        checked && styles.thumbChecked
+      ]} />
+    </TouchableOpacity>
+  );
+}
 
-export { Switch }
+const styles = StyleSheet.create({
+  container: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.gray[200],
+    padding: 2,
+    justifyContent: 'center',
+  },
+  containerChecked: {
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  disabled: {
+    opacity: 0.5,
+  },
+  thumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
+    transform: [{ translateX: 0 }],
+  },
+  thumbChecked: {
+    transform: [{ translateX: 20 }],
+  },
+});

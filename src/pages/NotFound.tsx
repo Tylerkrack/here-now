@@ -1,27 +1,51 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
 
-const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname
-    );
-  }, [location.pathname]);
+export default function NotFound() {
+  const router = useRouter();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
-      </div>
-    </div>
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>404</Text>
+        <Text style={styles.subtitle}>Oops! Page not found</Text>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.link}>
+          <Text style={styles.linkText}>Go back home</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
-};
+}
 
-export default NotFound;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#374151',
+  },
+  subtitle: {
+    fontSize: 20,
+    color: '#6b7280',
+    marginBottom: 16,
+  },
+  link: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  linkText: {
+    color: '#3b82f6',
+    fontSize: 16,
+    textDecorationLine: 'underline',
+  },
+});

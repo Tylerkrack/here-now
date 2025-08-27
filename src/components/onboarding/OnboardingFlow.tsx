@@ -1,12 +1,12 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Platform } from "react-native";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
-import { IntentBadge, type Intent } from "@/components/ui/intent-badge";
-import { Camera, ChevronRight, Upload, X } from "lucide-react";
+import { IntentBadge, type Intent, type DatabaseIntent } from "@/components/ui/intent-badge";
+import { colors } from "@/lib/colors";
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -52,11 +52,103 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
     "Fitness classes", "Popup events", "Game nights", "Trivia nights"
   ];
 
-  const handleNext = () => {
+  // Map our UI intents to database values
+  const intentMapping = {
+    dating: 'casual', // Map 'dating' to 'casual' for database
+    friendship: 'friends', // Map 'friendship' to 'friends' for database
+    networking: 'networking' // This one is already correct
+  } as const;
+
+  const getDatabaseIntent = (uiIntent: Intent): DatabaseIntent => {
+    return intentMapping[uiIntent];
+  };
+
+  const handleNext = async () => {
     if (step < 4) {
+      // Validate photos before allowing to proceed to step 4
+      if (step === 2 && data.photos.filter(photo => photo).length < 2) {
+        Alert.alert('Photos Required', 'Please add at least 2 photos before continuing.');
+        return;
+      }
+      
+      // Validate intents before allowing to proceed to step 4
+      if (step === 3 && data.intents.length === 0) {
+        Alert.alert('Intent Required', 'Please select at least one intent (dating, friendship, or networking) before continuing.');
+        return;
+      }
+      
       setStep(step + 1);
     } else {
-      onComplete(data);
+      // Final step - validate and create profile
+      if (data.photos.filter(photo => photo).length < 2) {
+        Alert.alert('Photos Required', 'Please add at least 2 photos before completing your profile.');
+        return;
+      }
+
+      if (data.intents.length === 0) {
+        Alert.alert('Intent Required', 'Please select at least one intent (dating, friendship, or networking).');
+        return;
+      }
+
+      // Create the profile in the database
+      await createProfile();
+    }
+  };
+
+  const createProfile = async () => {
+    if (!user) return;
+
+    setUploading(true);
+    try {
+      console.log('Updating profile for user:', user.id);
+      console.log('Profile data:', data);
+      
+      const profileData = {
+        display_name: data.name,
+        age: data.age,
+        bio: data.bio || null,
+        photos: data.photos.filter(photo => photo),
+        interests: data.socialActivities,
+        intent: data.intents[0] ? getDatabaseIntent(data.intents[0]) : null, // Map to database values
+        dating_age_min: data.ageRanges.dating.min,
+        dating_age_max: data.ageRanges.dating.max,
+        friendship_age_min: data.ageRanges.friendship.min,
+        friendship_age_max: data.ageRanges.friendship.max,
+        networking_age_min: data.ageRanges.networking.min,
+        networking_age_max: data.ageRanges.networking.max,
+        is_active: true
+      };
+
+      console.log('UI intents:', data.intents);
+      console.log('Mapped database intent:', data.intents[0] ? getDatabaseIntent(data.intents[0]) : null);
+      console.log('Updating profile data:', profileData);
+
+      // Update existing profile instead of inserting new one
+      const { data: result, error } = await supabase
+        .from('profiles')
+        .update(profileData)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase error updating profile:', error);
+        Alert.alert('Error', `Failed to update profile: ${error.message}`);
+        return;
+      }
+
+      console.log('Profile updated successfully:', result);
+      Alert.alert('Success', 'Profile completed successfully!', [
+        {
+          text: 'Continue',
+          onPress: () => onComplete(data)
+        }
+      ]);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -64,31 +156,35 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
     setData(prev => ({ ...prev, ...updates }));
   };
 
-  const uploadPhoto = async (file: File, index: number) => {
-    if (!user) return;
-    
+  const uploadPhoto = async (imageUri: string, index: number) => {
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${index}-${Date.now()}.${fileExt}`;
-      
-      const { data: uploadData, error } = await supabase.storage
-        .from('user-photos')
-        .upload(fileName, file);
-
-      if (error) throw error;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('user-photos')
-        .getPublicUrl(fileName);
-
+      // For now, we'll store the image URI directly
+      // In a real app, you'd upload to Supabase storage
       const newPhotos = [...data.photos];
-      newPhotos[index] = publicUrl;
+      newPhotos[index] = imageUri;
       updateData({ photos: newPhotos });
     } catch (error) {
-      console.error('Error uploading photo:', error);
+      console.error('Error handling photo:', error);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const pickImage = async (index: number) => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await uploadPhoto(result.assets[0].uri, index);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
     }
   };
 
@@ -98,254 +194,442 @@ export function OnboardingFlow({ onComplete, initialData }: OnboardingFlowProps)
     updateData({ photos: newPhotos.filter(photo => photo !== "") });
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, index: number) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      uploadPhoto(file, index);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-primary flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-6 shadow-floating">
-        <div className="mb-6">
-          <div className="flex space-x-2 mb-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className={`h-2 flex-1 rounded-full ${
-                  i <= step ? "bg-primary" : "bg-muted"
-                }`}
-              />
-            ))}
-          </div>
-          <h2 className="text-2xl font-bold text-foreground">
-            {step === 1 && "Welcome! Let's get started"}
-            {step === 2 && "Tell us about yourself"}
-            {step === 3 && "What do you enjoy?"}
-            {step === 4 && "Set your preferences"}
-          </h2>
-        </div>
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.progressBar}>
+          {[1, 2, 3, 4].map((i) => (
+            <View
+              key={i}
+              style={[
+                styles.progressStep,
+                i <= step ? styles.progressStepActive : styles.progressStepInactive,
+                // Show warning if trying to go to step 4 without photos
+                i === 4 && step >= 3 && data.photos.filter(photo => photo).length < 2 && styles.progressStepWarning
+              ]}
+            />
+          ))}
+        </View>
+        
+        <Text style={styles.title}>
+          {step === 1 && "Welcome! Let's get started"}
+          {step === 2 && "Tell us about yourself"}
+          {step === 3 && "What do you enjoy?"}
+          {step === 4 && "Set your preferences"}
+        </Text>
 
         {step === 1 && (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
+          <View style={styles.stepContent}>
+            <View style={styles.inputGroup}>
+              <Label>Email</Label>
               <Input
-                id="email"
-                type="email"
-                value={data.email}
-                onChange={(e) => updateData({ email: e.target.value })}
                 placeholder="your@email.com"
+                value={data.email}
+                onChangeText={(text) => updateData({ email: text })}
+                keyboardType="email-address"
+                autoCapitalize="none"
               />
-            </div>
-            <div>
-              <Label htmlFor="name">Name</Label>
+            </View>
+            <View style={styles.inputGroup}>
+              <Label>Name</Label>
               <Input
-                id="name"
-                value={data.name}
-                onChange={(e) => updateData({ name: e.target.value })}
                 placeholder="Your first name"
+                value={data.name}
+                onChangeText={(text) => updateData({ name: text })}
               />
-            </div>
-            <div>
-              <Label htmlFor="age">Age</Label>
+            </View>
+            <View style={styles.inputGroup}>
+              <Label>Age</Label>
               <Input
-                id="age"
-                type="number"
-                min="18"
-                max="100"
-                value={data.age}
-                onChange={(e) => updateData({ age: parseInt(e.target.value) })}
+                placeholder="25"
+                value={data.age.toString()}
+                onChangeText={(text) => updateData({ age: parseInt(text) || 25 })}
+                keyboardType="numeric"
               />
-            </div>
-          </div>
+            </View>
+          </View>
         )}
 
         {step === 2 && (
-          <div className="space-y-4">
-            <div>
-              <Label>Add Photos (minimum 2 required)</Label>
-              <div className="grid grid-cols-3 gap-3 mt-2">
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="relative">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileSelect(e, i)}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                      id={`photo-${i}`}
-                    />
-                    <div className="aspect-square rounded-lg border-2 border-dashed border-muted flex items-center justify-center bg-muted/20 hover:bg-muted/40 cursor-pointer transition-colors relative">
-                      {data.photos[i] ? (
-                        <>
-                          <img
-                            src={data.photos[i]}
-                            alt={`Photo ${i + 1}`}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              removePhoto(i);
-                            }}
-                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/80 z-20"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : uploading ? (
-                        <div className="flex flex-col items-center">
-                          <Upload className="w-6 h-6 text-muted-foreground animate-pulse" />
-                          <span className="text-xs text-muted-foreground mt-1">Uploading...</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Camera className="w-8 h-8 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground mt-1">Add Photo</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {data.photos.length < 2 && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Please add at least 2 photos to continue
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
+          <View style={styles.stepContent}>
+            <View style={styles.inputGroup}>
+              <Label>Bio</Label>
+              <Input
+                placeholder="Tell us about yourself..."
                 value={data.bio}
-                onChange={(e) => updateData({ bio: e.target.value })}
-                placeholder="Tell us a bit about yourself..."
-                rows={4}
+                onChangeText={(text) => updateData({ bio: text })}
+                multiline
+                numberOfLines={4}
               />
-            </div>
-          </div>
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Label>Profile Photos</Label>
+              <Text style={styles.photoRequirement}>
+                {data.photos.filter(photo => photo).length}/4 photos (minimum 2 required)
+              </Text>
+              <View style={styles.photoGrid}>
+                {[0, 1, 2, 3].map((index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.photoSlot}
+                    onPress={() => pickImage(index)}
+                  >
+                    {data.photos[index] ? (
+                      <Image source={{ uri: data.photos[index] }} style={styles.photo} />
+                    ) : (
+                      <View style={styles.photoPlaceholder}>
+                        <Text style={styles.photoPlaceholderText}>+</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
         )}
 
         {step === 3 && (
-          <div className="space-y-4">
-            <div>
-              <Label>Where do you like to hang out? (Select your favorites)</Label>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {socialActivitiesOptions.map((activity) => (
-                  <div key={activity} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={activity}
-                      checked={data.socialActivities.includes(activity)}
-                      onCheckedChange={(checked) => {
-                        if (checked) {
-                          updateData({
-                            socialActivities: [...data.socialActivities, activity]
-                          });
-                        } else {
-                          updateData({
-                            socialActivities: data.socialActivities.filter(a => a !== activity)
-                          });
-                        }
-                      }}
-                    />
-                    <Label htmlFor={activity} className="text-sm">
-                      {activity}
-                    </Label>
-                  </div>
+          <View style={styles.stepContent}>
+            <View style={styles.inputGroup}>
+              <Label>What are you looking for?</Label>
+              <Text style={styles.intentRequirement}>
+                Select at least one intent to continue
+              </Text>
+              <View style={styles.intentOptions}>
+                {([
+                  { ui: 'dating', db: 'casual', label: 'Dating' },
+                  { ui: 'friendship', db: 'friends', label: 'Friendship' },
+                  { ui: 'networking', db: 'networking', label: 'Networking' }
+                ] as const).map((intentOption) => (
+                  <TouchableOpacity
+                    key={intentOption.ui}
+                    style={[
+                      styles.intentOption,
+                      data.intents.includes(intentOption.ui) && styles.intentOptionActive
+                    ]}
+                    onPress={() => {
+                      const newIntents = data.intents.includes(intentOption.ui)
+                        ? data.intents.filter(i => i !== intentOption.ui)
+                        : [...data.intents, intentOption.ui];
+                      updateData({ intents: newIntents });
+                    }}
+                  >
+                    <IntentBadge intent={intentOption.ui} />
+                  </TouchableOpacity>
                 ))}
-              </div>
-            </div>
-          </div>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Label>Interests & Activities</Label>
+              <View style={styles.interestsGrid}>
+                {socialActivitiesOptions.map((activity) => (
+                  <TouchableOpacity
+                    key={activity}
+                    style={[
+                      styles.interestTag,
+                      data.socialActivities.includes(activity) && styles.interestTagActive
+                    ]}
+                    onPress={() => {
+                      const newActivities = data.socialActivities.includes(activity)
+                        ? data.socialActivities.filter(a => a !== activity)
+                        : [...data.socialActivities, activity];
+                      updateData({ socialActivities: newActivities });
+                    }}
+                  >
+                    <Text style={[
+                      styles.interestText,
+                      data.socialActivities.includes(activity) && styles.interestTextActive
+                    ]}>
+                      {activity}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
         )}
 
         {step === 4 && (
-          <div className="space-y-4">
-            <div>
-              <Label>What are you looking for?</Label>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {(["dating", "networking", "friendship"] as Intent[]).map((intent) => (
-                  <button
-                    key={intent}
-                    onClick={() => {
-                      const newIntents = data.intents.includes(intent)
-                        ? data.intents.filter(i => i !== intent)
-                        : [...data.intents, intent];
-                      updateData({ intents: newIntents });
-                    }}
-                    className={`p-2 rounded-lg border transition-all ${
-                      data.intents.includes(intent)
-                        ? "border-primary bg-primary/10"
-                        : "border-border"
-                    }`}
-                  >
-                    <IntentBadge intent={intent} />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {data.intents.map((intent) => (
-              <div key={intent} className="space-y-2">
-                <Label>Age range for {intent}</Label>
-                <div className="flex space-x-3">
-                  <div className="flex-1">
-                    <Input
-                      type="number"
-                      placeholder="Min"
-                      value={data.ageRanges[intent].min}
-                      onChange={(e) =>
-                        updateData({
+          <View style={styles.stepContent}>
+            <View style={styles.inputGroup}>
+              <Label>Age Range Preferences</Label>
+              {data.intents.map((intent) => (
+                <View key={intent} style={styles.ageRangeContainer}>
+                  <Label style={styles.ageRangeLabel}>{intent.charAt(0).toUpperCase() + intent.slice(1)}</Label>
+                  <View style={styles.ageRangeInputs}>
+                    <View style={styles.ageInputGroup}>
+                      <Label>Min Age</Label>
+                      <Input
+                        placeholder="18"
+                        value={data.ageRanges[intent].min.toString()}
+                        onChangeText={(text) => updateData({
                           ageRanges: {
                             ...data.ageRanges,
-                            [intent]: {
-                              ...data.ageRanges[intent],
-                              min: parseInt(e.target.value)
-                            }
+                            [intent]: { ...data.ageRanges[intent], min: parseInt(text) || 18 }
                           }
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Input
-                      type="number"
-                      placeholder="Max"
-                      value={data.ageRanges[intent].max}
-                      onChange={(e) =>
-                        updateData({
+                        })}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                    <Text style={styles.ageRangeSeparator}>to</Text>
+                    <View style={styles.ageInputGroup}>
+                      <Label>Max Age</Label>
+                      <Input
+                        placeholder="50"
+                        value={data.ageRanges[intent].max.toString()}
+                        onChangeText={(text) => updateData({
                           ageRanges: {
                             ...data.ageRanges,
-                            [intent]: {
-                              ...data.ageRanges[intent],
-                              max: parseInt(e.target.value)
-                            }
+                            [intent]: { ...data.ageRanges[intent], max: parseInt(text) || 50 }
                           }
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                        })}
+                        keyboardType="numeric"
+                      />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
         )}
 
-        <Button 
-          onClick={handleNext}
-          className="w-full mt-6 bg-gradient-primary border-0"
-          disabled={
-            (step === 1 && (!data.email || !data.name)) ||
-            (step === 2 && data.photos.length < 2) ||
-            (step === 4 && data.intents.length === 0)
-          }
-        >
-          {step === 4 ? "Complete Setup" : "Continue"}
-          <ChevronRight className="w-4 h-4 ml-2" />
-        </Button>
-      </Card>
-    </div>
+        <View style={styles.buttonContainer}>
+          {step > 1 && (
+            <Button
+              variant="outline"
+              onClick={() => setStep(step - 1)}
+              style={styles.backButton}
+            >
+              <Text>Back</Text>
+            </Button>
+          )}
+          
+          <Button
+            onClick={handleNext}
+            style={styles.nextButton}
+            disabled={uploading}
+          >
+            <Text>
+              {uploading ? "Updating Profile..." : (step === 4 ? "Complete Profile" : "Next")}
+            </Text>
+          </Button>
+        </View>
+      </View>
+    </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.primary.DEFAULT,
+    padding: 20,
+  },
+  content: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: 15,
+    padding: 20,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  progressBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  progressStep: {
+    height: 8,
+    width: '25%',
+    backgroundColor: colors.gray[200],
+    borderRadius: 4,
+  },
+  progressStepActive: {
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  progressStepInactive: {
+    backgroundColor: colors.gray[200],
+  },
+  progressStepWarning: {
+    backgroundColor: colors.destructive.DEFAULT,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  stepContent: {
+    marginBottom: 20,
+  },
+  inputGroup: {
+    marginBottom: 15,
+  },
+  input: {
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.foreground,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginBottom: 8,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  photoSlot: {
+    width: '32%',
+    aspectRatio: 1,
+    marginBottom: 10,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.gray[100],
+  },
+  photoPlaceholderText: {
+    fontSize: 40,
+    color: colors.gray[400],
+  },
+  textArea: {
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.foreground,
+    minHeight: 100,
+  },
+  intentOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    marginTop: 10,
+  },
+  intentOption: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+    marginVertical: 5,
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  intentOptionActive: {
+    borderColor: colors.primary.DEFAULT,
+    backgroundColor: colors.primary.foreground,
+  },
+  interestsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+  },
+  interestTag: {
+    backgroundColor: colors.gray[100],
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    marginVertical: 5,
+    marginHorizontal: 5,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  interestTagActive: {
+    backgroundColor: colors.primary.foreground,
+    borderColor: colors.primary.DEFAULT,
+  },
+  interestText: {
+    fontSize: 14,
+    color: colors.foreground,
+  },
+  interestTextActive: {
+    color: colors.primary.DEFAULT,
+  },
+  ageRangeContainer: {
+    marginBottom: 15,
+  },
+  ageRangeLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.foreground,
+    marginBottom: 8,
+  },
+  ageRangeInputs: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  ageInputGroup: {
+    flex: 1,
+    marginRight: 10,
+  },
+  ageRangeSeparator: {
+    fontSize: 16,
+    color: colors.foreground,
+    marginHorizontal: 10,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  backButton: {
+    backgroundColor: colors.gray[100],
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    width: '48%',
+  },
+  nextButton: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    width: '48%',
+  },
+  photoRequirement: {
+    fontSize: 14,
+    color: colors.gray[600],
+    marginBottom: 10,
+  },
+  intentRequirement: {
+    fontSize: 14,
+    color: colors.gray[600],
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+});
+
+export default OnboardingFlow;
