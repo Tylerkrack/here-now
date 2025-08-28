@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "Here Now",
+    "name": "SpotSwipe",
     "slug": "here-now",
     "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.svg",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
@@ -18,8 +19,8 @@
       "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "Allow Here Now to use your location to show nearby zones and help you discover people in your area.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Here Now to use your location to show nearby zones and help you discover people in your area.",
+        "NSLocationWhenInUseUsageDescription": "Allow SpotSwipe to use your location to show nearby zones and help you discover people in your area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow SpotSwipe to use your location to show nearby zones and help you discover people in your area.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile photos."
       },
@@ -46,14 +47,14 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Here Now to use your location to show nearby zones and help you discover people in your area."
+          "locationAlwaysAndWhenInUsePermission": "Allow SpotSwipe to use your location to show nearby zones and help you discover people in your area."
         }
       ],
       "expo-image-picker",
       [
         "@rnmapbox/maps",
         {
-          "mapboxPublicKey": "YOUR_MAPBOX_PUBLIC_TOKEN"
+          "mapboxPublicKey": "${MAPBOX_PUBLIC_TOKEN}"
         }
       ]
     ],

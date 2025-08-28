@@ -11,7 +11,8 @@
         "resourceClass": "default"
       },
       "env": {
-        "PACKAGE_MANAGER": "npm"
+        "PACKAGE_MANAGER": "npm",
+        "MAPBOX_PUBLIC_TOKEN": "YOUR_MAPBOX_PUBLIC_TOKEN_HERE"
       }
     },
     "preview": {
@@ -20,7 +21,8 @@
         "resourceClass": "default"
       },
       "env": {
-        "PACKAGE_MANAGER": "npm"
+        "PACKAGE_MANAGER": "npm",
+        "MAPBOX_PUBLIC_TOKEN": "YOUR_MAPBOX_PUBLIC_TOKEN_HERE"
       }
     },
     "production": {
@@ -29,7 +31,8 @@
         "resourceClass": "default"
       },
       "env": {
-        "PACKAGE_MANAGER": "npm"
+        "PACKAGE_MANAGER": "npm",
+        "MAPBOX_PUBLIC_TOKEN": "YOUR_MAPBOX_PUBLIC_TOKEN_HERE"
       }
     }
   },
