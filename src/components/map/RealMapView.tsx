@@ -5,6 +5,16 @@ import * as Location from 'expo-location';
 import { useZones } from '@/hooks/useZones';
 import { colors } from '@/lib/colors';
 
+// Initialize Mapbox with your token
+Mapbox.setAccessToken('pk.eyJ1IjoidHlsZXJrcmFja293IiwiYSI6ImNtZXN4MDVndzA1aGcyam9xdXNjZ3Fua2UifQ.BH1WplP-PFF4QdnPYGaeag');
+
+interface Region {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+}
+
 interface RealMapViewProps {
   onEnterZone: (zoneId: string) => void;
   onOpenSettings: () => void;

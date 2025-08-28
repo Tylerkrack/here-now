@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.herenow.zone",
-      "buildNumber": "7",
+      "buildNumber": "8",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Allow SpotSwipe to use your location to show nearby zones and help you discover people in your area.",
@@ -53,7 +53,7 @@
       [
         "@rnmapbox/maps",
         {
-          "mapboxPublicKey": "${MAPBOX_PUBLIC_TOKEN}"
+          "mapboxPublicKey": "pk.eyJ1IjoidHlsZXJrcmFja293IiwiYSI6ImNtZXN4MDVndzA1aGcyam9xdXNjZ3Fua2UifQ.BH1WplP-PFF4QdnPYGaeag"
         }
       ]
     ],
