@@ -114,12 +114,14 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   // Check if user is in any zones
   useEffect(() => {
-    if (location && zones.length > 0) {
+    if (location && zones && zones.length > 0) {
       const userLat = location.coords.latitude;
       const userLng = location.coords.longitude;
       
       // Check if user is within any zone
       const enteredZone = zones.find(zone => {
+        if (!zone || !zone.latitude || !zone.longitude || !zone.radius_meters) return false;
+        
         const distance = Math.sqrt(
           Math.pow(userLat - zone.latitude, 2) + 
           Math.pow(userLng - zone.longitude, 2)
@@ -312,39 +314,52 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       {/* Zone Info Panel - shows nearby zones with manual entry for testing */}
       <View style={styles.zonePanel}>
         <Text style={styles.zonePanelTitle}>
-          {zonesLoading ? 'Loading zones...' : `Nearby Zones (${zones.length})`}
+          {zonesLoading ? 'Loading zones...' : `Nearby Zones (${zones?.length || 0})`}
         </Text>
         {zonesLoading ? (
           <View style={styles.zonesLoadingContainer}>
             <Text style={styles.zonesLoadingText}>Finding zones near you...</Text>
           </View>
-        ) : zones.length > 0 ? (
-          <ScrollView style={styles.zoneList} showsVerticalScrollIndicator={false}>
-            {zones.map((zone) => (
-              <TouchableOpacity
-                key={zone.id}
-                style={styles.zoneItem}
-                onPress={() => {
-                  console.log('Manual zone entry for testing:', zone.id, zone.name);
-                  onEnterZone(zone.id);
-                }}
-              >
-                <View style={styles.zoneIcon}>
-                  <Text style={styles.zoneIconText}>
-                    {zone.zone_type === 'cafe' ? '☕' : 
-                     zone.zone_type === 'restaurant' ? '🍽️' :
-                     zone.zone_type === 'bar' ? '🍺' :
-                     zone.zone_type === 'office' ? '🏢' :
-                     zone.zone_type === 'park' ? '🌳' : '📍'}
-                  </Text>
-                </View>
-                <View style={styles.zoneInfo}>
-                  <Text style={styles.zoneName}>{zone.name}</Text>
-                  <Text style={styles.zoneType}>{zone.zone_type}</Text>
-                </View>
-                <Text style={styles.zoneDistance}>Enter</Text>
-              </TouchableOpacity>
-            ))}
+        ) : zones && zones.length > 0 ? (
+          <ScrollView 
+            style={styles.zoneList} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            contentContainerStyle={styles.zoneListContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {zones.slice(0, 3).map((zone) => {
+              if (!zone || !zone.id) return null; // Safety check
+              return (
+                <TouchableOpacity
+                  key={zone.id}
+                  style={styles.zoneItem}
+                  onPress={() => {
+                    try {
+                      console.log('Manual zone entry for testing:', zone.id, zone.name);
+                      onEnterZone(zone.id);
+                    } catch (error) {
+                      console.error('Error entering zone:', error);
+                    }
+                  }}
+                >
+                  <View style={styles.zoneIcon}>
+                    <Text style={styles.zoneIconText}>
+                      {zone.zone_type === 'cafe' ? '☕' : 
+                       zone.zone_type === 'restaurant' ? '🍽️' :
+                       zone.zone_type === 'bar' ? '🍺' :
+                       zone.zone_type === 'office' ? '🏢' :
+                       zone.zone_type === 'park' ? '🌳' : '📍'}
+                    </Text>
+                  </View>
+                  <View style={styles.zoneInfo}>
+                    <Text style={styles.zoneName}>{zone.name || 'Unknown Zone'}</Text>
+                    <Text style={styles.zoneType}>{zone.zone_type || 'unknown'}</Text>
+                  </View>
+                  <Text style={styles.zoneDistance}>Enter</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         ) : (
           <View style={styles.noZonesContainer}>
@@ -522,17 +537,19 @@ const styles = StyleSheet.create({
   },
   zonePanel: {
     position: 'absolute',
-    bottom: 70, // Reduced from 80 to 70
-    left: 6, // Reduced from 8 to 6
-    right: 6, // Reduced from 8 to 6
+    bottom: 70,
+    left: 6,
+    right: 6,
+    maxHeight: 200, // Limit height to prevent covering map
     backgroundColor: colors.white,
-    borderRadius: 8, // Reduced from 10 to 8
-    padding: 6, // Reduced from 8 to 6
+    borderRadius: 8,
+    padding: 6,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    zIndex: 5, // Ensure it's above map but below controls
   },
   zonePanelTitle: {
     fontSize: 11, // Reduced from 12 to 11
@@ -541,7 +558,7 @@ const styles = StyleSheet.create({
     marginBottom: 5, // Reduced from 6 to 5
   },
   zoneList: {
-    // Removed gap property
+    maxHeight: 150, // Constrain the scrollable area
   },
   zoneItem: {
     flexDirection: 'row',
@@ -607,5 +624,8 @@ const styles = StyleSheet.create({
   noZonesText: {
     fontSize: 14,
     color: colors.muted.foreground,
+  },
+  zoneListContent: {
+    paddingBottom: 8,
   },
 });
