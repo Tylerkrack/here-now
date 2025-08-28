@@ -12,7 +12,7 @@
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
-        "MAPBOX_PUBLIC_TOKEN": "YOUR_MAPBOX_PUBLIC_TOKEN_HERE"
+        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}"
       }
     },
     "preview": {
@@ -22,7 +22,7 @@
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
-        "MAPBOX_PUBLIC_TOKEN": "YOUR_MAPBOX_PUBLIC_TOKEN_HERE"
+        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}"
       }
     },
     "production": {
@@ -32,7 +32,7 @@
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
-        "MAPBOX_PUBLIC_TOKEN": "YOUR_MAPBOX_PUBLIC_TOKEN_HERE"
+        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}"
       }
     }
   },

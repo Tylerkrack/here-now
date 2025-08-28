@@ -10,7 +10,7 @@ export interface AppLogoProps {
 export function AppLogo({ size = 'md', style }: AppLogoProps) {
   return (
     <View style={[styles.logo, styles[size], style]}>
-      <Text style={[styles.text, styles[`${size}Text`]]}>HN</Text>
+      <Text style={[styles.text, styles[`${size}Text`]]}>SS</Text>
     </View>
   );
 }

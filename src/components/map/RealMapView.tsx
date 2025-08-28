@@ -182,7 +182,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.appLogoContainer}>
-            <Text style={styles.appLogo}>HN</Text>
+            <Text style={styles.appLogo}>SS</Text>
           </View>
         </View>
         

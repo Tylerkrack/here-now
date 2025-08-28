@@ -7,7 +7,7 @@ const LoadingScreen = () => {
         <div className="animate-pulse">
           <img 
             src="/lovable-uploads/a17104df-4c8c-4a80-bfe2-2ea1566de20d.png" 
-            alt="Here Now Logo" 
+            alt="SpotSwipe Logo" 
             className="w-64 h-auto"
           />
         </div>
