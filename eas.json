@@ -9,18 +9,27 @@
       "distribution": "internal",
       "ios": {
         "resourceClass": "default"
+      },
+      "env": {
+        "PACKAGE_MANAGER": "npm"
       }
     },
     "preview": {
       "distribution": "store",
       "ios": {
         "resourceClass": "default"
+      },
+      "env": {
+        "PACKAGE_MANAGER": "npm"
       }
     },
     "production": {
       "autoIncrement": true,
       "ios": {
         "resourceClass": "default"
+      },
+      "env": {
+        "PACKAGE_MANAGER": "npm"
       }
     }
   },
