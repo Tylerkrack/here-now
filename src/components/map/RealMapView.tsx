@@ -5,8 +5,7 @@ import * as Location from 'expo-location';
 import { useZones } from '@/hooks/useZones';
 import { colors } from '@/lib/colors';
 
-// Initialize Mapbox with your token
-Mapbox.setAccessToken('pk.eyJ1IjoidHlsZXJrcmFja293IiwiYSI6ImNtZXN4MDVndzA1aGcyam9xdXNjZ3Fua2UifQ.BH1WplP-PFF4QdnPYGaeag');
+// Initialize Mapbox with your token - moved to useEffect to prevent crashes
 
 interface Region {
   latitude: number;
@@ -62,7 +61,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       setLoading(false);
       
       // Then, get more accurate location in background
-      setTimeout(async () => {
+      const timeoutId = setTimeout(async () => {
         try {
           const accuratePosition = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
@@ -86,6 +85,9 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         }
       }, 2000);
       
+      // Cleanup timeout on unmount
+      return () => clearTimeout(timeoutId);
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get location';
       setError(errorMessage);
@@ -94,6 +96,13 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   };
 
   useEffect(() => {
+    // Initialize Mapbox safely
+    try {
+      Mapbox.setAccessToken('pk.eyJ1IjoidHlsZXJrcmFja293IiwiYSI6ImNtZXN4MDVndzA1aGcyam9xdXNjZ3Fua2UifQ.BH1WplP-PFF4QdnPYGaeag');
+    } catch (error) {
+      console.error('Failed to initialize Mapbox:', error);
+    }
+    
     getCurrentLocation();
   }, []);
 
@@ -107,8 +116,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         longitudeDelta: 0.0421,
       };
       setCurrentRegion(newRegion);
-      // Center map on user location
-      mapRef.current.setCenterCoordinate([location.coords.longitude, location.coords.latitude], 500);
+      // Don't call setCenterCoordinate - it might not exist and cause crashes
+      // The map will center automatically when currentRegion changes
     }
   }, [location]);
 
@@ -138,39 +147,51 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   }, [location, zones, onEnterZone]);
 
   const handleZoomIn = () => {
-    if (mapRef.current && currentRegion) {
-      // Simple zoom by adjusting the region
-      const newRegion = {
-        ...currentRegion,
-        latitudeDelta: currentRegion.latitudeDelta * 0.7,
-        longitudeDelta: currentRegion.longitudeDelta * 0.7,
-      };
-      setCurrentRegion(newRegion);
+    try {
+      if (mapRef.current && currentRegion) {
+        // Simple zoom by adjusting the region
+        const newRegion = {
+          ...currentRegion,
+          latitudeDelta: Math.max(currentRegion.latitudeDelta * 0.7, 0.001), // Prevent zooming too close
+          longitudeDelta: Math.max(currentRegion.longitudeDelta * 0.7, 0.001),
+        };
+        setCurrentRegion(newRegion);
+      }
+    } catch (error) {
+      console.error('Error in handleZoomIn:', error);
     }
   };
 
   const handleZoomOut = () => {
-    if (mapRef.current && currentRegion) {
-      // Simple zoom by adjusting the region
-      const newRegion = {
-        ...currentRegion,
-        latitudeDelta: currentRegion.latitudeDelta * 1.3,
-        longitudeDelta: currentRegion.longitudeDelta * 1.3,
-      };
-      setCurrentRegion(newRegion);
+    try {
+      if (mapRef.current && currentRegion) {
+        // Simple zoom by adjusting the region
+        const newRegion = {
+          ...currentRegion,
+          latitudeDelta: Math.min(currentRegion.latitudeDelta * 1.3, 10), // Prevent zooming too far
+          longitudeDelta: Math.min(currentRegion.longitudeDelta * 1.3, 10),
+        };
+        setCurrentRegion(newRegion);
+      }
+    } catch (error) {
+      console.error('Error in handleZoomOut:', error);
     }
   };
 
   const handleMyLocation = () => {
-    if (location && currentRegion) {
-      // Center map on user location
-      const newRegion = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.01, // Much closer zoom
-        longitudeDelta: 0.01,
-      };
-      setCurrentRegion(newRegion);
+    try {
+      if (location && currentRegion) {
+        // Center map on user location
+        const newRegion = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.01, // Much closer zoom
+          longitudeDelta: 0.01,
+        };
+        setCurrentRegion(newRegion);
+      }
+    } catch (error) {
+      console.error('Error in handleMyLocation:', error);
     }
   };
 
@@ -264,33 +285,38 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           logoEnabled={false}
         >
         {/* Zone Circles */}
-        {zones.map((zone) => (
-          <Mapbox.ShapeSource
-            key={zone.id}
-            id={`zone-${zone.id}`}
-            shape={{
-              type: 'Feature',
-              geometry: {
-                type: 'Point',
-                coordinates: [zone.longitude, zone.latitude]
-              },
-              properties: {
-                radius: zone.radius_meters,
-                type: zone.zone_type
-              }
-            }}
-          >
-            <Mapbox.CircleLayer
-              id={`zone-circle-${zone.id}`}
-              style={{
-                circleRadius: Math.max(zone.radius_meters / 100, 0.1), // Convert to appropriate scale for local areas
-                circleColor: getZoneColor(zone.zone_type),
-                circleStrokeColor: getZoneBorderColor(zone.zone_type),
-                circleStrokeWidth: 2
+        {zones && Array.isArray(zones) && zones.map((zone) => {
+          if (!zone || !zone.id || !zone.longitude || !zone.latitude || !zone.radius_meters) {
+            return null; // Skip invalid zones
+          }
+          return (
+            <Mapbox.ShapeSource
+              key={zone.id}
+              id={`zone-${zone.id}`}
+              shape={{
+                type: 'Feature',
+                geometry: {
+                  type: 'Point',
+                  coordinates: [zone.longitude, zone.latitude]
+                },
+                properties: {
+                  radius: zone.radius_meters,
+                  type: zone.zone_type
+                }
               }}
-            />
-          </Mapbox.ShapeSource>
-        ))}
+            >
+              <Mapbox.CircleLayer
+                id={`zone-circle-${zone.id}`}
+                style={{
+                  circleRadius: Math.max(zone.radius_meters / 100, 0.1), // Convert to appropriate scale for local areas
+                  circleColor: getZoneColor(zone.zone_type),
+                  circleStrokeColor: getZoneBorderColor(zone.zone_type),
+                  circleStrokeWidth: 2
+                }}
+              />
+            </Mapbox.ShapeSource>
+          );
+        })}
         </Mapbox.MapView>
       ) : (
         <View style={styles.mapPlaceholder}>
@@ -320,16 +346,17 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           <View style={styles.zonesLoadingContainer}>
             <Text style={styles.zonesLoadingText}>Finding zones near you...</Text>
           </View>
-        ) : zones && zones.length > 0 ? (
+        ) : zones && Array.isArray(zones) && zones.length > 0 ? (
           <ScrollView 
             style={styles.zoneList} 
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}
             contentContainerStyle={styles.zoneListContent}
             keyboardShouldPersistTaps="handled"
+            scrollEnabled={true}
           >
             {zones.slice(0, 3).map((zone) => {
-              if (!zone || !zone.id) return null; // Safety check
+              if (!zone || !zone.id || typeof zone.id !== 'string') return null; // Extra safety check
               return (
                 <TouchableOpacity
                   key={zone.id}
@@ -337,7 +364,9 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
                   onPress={() => {
                     try {
                       console.log('Manual zone entry for testing:', zone.id, zone.name);
-                      onEnterZone(zone.id);
+                      if (onEnterZone && typeof onEnterZone === 'function') {
+                        onEnterZone(zone.id);
+                      }
                     } catch (error) {
                       console.error('Error entering zone:', error);
                     }
