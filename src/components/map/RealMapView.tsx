@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useZones } from '@/hooks/useZones';
@@ -24,12 +24,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [currentRegion, setCurrentRegion] = useState<Region>({
-    latitude: 37.7749,
-    longitude: -122.4194,
-    latitudeDelta: 0.0922,
-    longitudeDelta: 0.0421,
-  });
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
   
   const { zones, loading: zonesLoading } = useZones();
   const mapRef = useRef<Mapbox.MapView>(null);
@@ -114,23 +109,39 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   }, [location, zones, onEnterZone]);
 
   const handleZoomIn = () => {
-    if (mapRef.current) {
-      // Get current zoom level and increase it
-      mapRef.current.setZoomLevel(Math.min(18, 12 + 2), 300);
+    if (mapRef.current && currentRegion) {
+      // Simple zoom by adjusting the region
+      const newRegion = {
+        ...currentRegion,
+        latitudeDelta: currentRegion.latitudeDelta * 0.7,
+        longitudeDelta: currentRegion.longitudeDelta * 0.7,
+      };
+      setCurrentRegion(newRegion);
     }
   };
 
   const handleZoomOut = () => {
-    if (mapRef.current) {
-      // Get current zoom level and decrease it
-      mapRef.current.setZoomLevel(Math.max(5, 12 - 2), 300);
+    if (mapRef.current && currentRegion) {
+      // Simple zoom by adjusting the region
+      const newRegion = {
+        ...currentRegion,
+        latitudeDelta: currentRegion.latitudeDelta * 1.3,
+        longitudeDelta: currentRegion.longitudeDelta * 1.3,
+      };
+      setCurrentRegion(newRegion);
     }
   };
 
   const handleMyLocation = () => {
-    if (location && mapRef.current) {
+    if (location && currentRegion) {
       // Center map on user location
-      mapRef.current.setCenterCoordinate([location.coords.longitude, location.coords.latitude], 300);
+      const newRegion = {
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01, // Much closer zoom
+        longitudeDelta: 0.01,
+      };
+      setCurrentRegion(newRegion);
     }
   };
 
@@ -211,17 +222,18 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       </View>
 
       {/* Map */}
-      <Mapbox.MapView
-        ref={mapRef}
-        style={styles.map}
-        styleURL={Mapbox.StyleURL.Street}
-        zoomLevel={12}
-        centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
-        showUserLocation={true}
-        showUserHeadingIndicator={true}
-        attributionEnabled={false}
-        logoEnabled={false}
-      >
+      {currentRegion ? (
+        <Mapbox.MapView
+          ref={mapRef}
+          style={styles.map}
+          styleURL={Mapbox.StyleURL.Street}
+          zoomLevel={14}
+          centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
+          showUserLocation={true}
+          showUserHeadingIndicator={true}
+          attributionEnabled={false}
+          logoEnabled={false}
+        >
         {/* Zone Circles */}
         {zones.map((zone) => (
           <Mapbox.ShapeSource
@@ -250,7 +262,12 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
             />
           </Mapbox.ShapeSource>
         ))}
-      </Mapbox.MapView>
+        </Mapbox.MapView>
+      ) : (
+        <View style={styles.mapPlaceholder}>
+          <Text style={styles.mapPlaceholderText}>Getting your location...</Text>
+        </View>
+      )}
 
       {/* Map Controls - matches web app exactly */}
       <View style={styles.mapControls}>
@@ -269,8 +286,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       {zones.length > 0 && (
         <View style={styles.zonePanel}>
           <Text style={styles.zonePanelTitle}>Nearby Zones ({zones.length})</Text>
-          <View style={styles.zoneList}>
-            {zones.slice(0, 3).map((zone) => (
+          <ScrollView style={styles.zoneList} showsVerticalScrollIndicator={false}>
+            {zones.map((zone) => (
               <TouchableOpacity
                 key={zone.id}
                 style={styles.zoneItem}
@@ -293,9 +310,9 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
                   <Text style={styles.zoneType}>{zone.zone_type}</Text>
                 </View>
                 <Text style={styles.zoneDistance}>Enter</Text>
-              </TouchableOpacity>
+                              </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
       )}
     </View>
@@ -527,5 +544,15 @@ const styles = StyleSheet.create({
     fontSize: 10, // Reduced from 11 to 10
     color: colors.primary.DEFAULT,
     fontWeight: '500',
+  },
+  mapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.secondary.DEFAULT,
+  },
+  mapPlaceholderText: {
+    fontSize: 16,
+    color: colors.muted.foreground,
   },
 });
