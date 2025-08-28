@@ -106,20 +106,24 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
     getCurrentLocation();
   }, []);
 
-  // Update map center when location changes
-  useEffect(() => {
-    if (location && mapRef.current) {
-      const newRegion = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
-      setCurrentRegion(newRegion);
-      // Don't call setCenterCoordinate - it might not exist and cause crashes
-      // The map will center automatically when currentRegion changes
-    }
-  }, [location]);
+        // Update map center when location changes
+      useEffect(() => {
+        if (location && mapRef.current) {
+          console.log('Location changed, setting new region:', {
+            lat: location.coords.latitude,
+            lng: location.coords.longitude
+          });
+          
+          const newRegion = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            latitudeDelta: 0.001, // Very close zoom - show just street level
+            longitudeDelta: 0.001, // Very close zoom - show just street level
+          };
+          setCurrentRegion(newRegion);
+          // Map will automatically center when centerCoordinate prop changes
+        }
+      }, [location]);
 
   // Check if user is in any zones
   useEffect(() => {
@@ -149,13 +153,16 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const handleZoomIn = () => {
     try {
       if (mapRef.current && currentRegion) {
-        // Simple zoom by adjusting the region
+        console.log('Zoom in clicked, current region:', currentRegion);
+        // Zoom in by reducing the region size
         const newRegion = {
           ...currentRegion,
-          latitudeDelta: Math.max(currentRegion.latitudeDelta * 0.7, 0.001), // Prevent zooming too close
-          longitudeDelta: Math.max(currentRegion.longitudeDelta * 0.7, 0.001),
+          latitudeDelta: Math.max(currentRegion.latitudeDelta * 0.3, 0.0005), // Very aggressive zoom in
+          longitudeDelta: Math.max(currentRegion.longitudeDelta * 0.3, 0.0005),
         };
+        console.log('Zoom in - new region:', newRegion);
         setCurrentRegion(newRegion);
+        // Map will automatically update when currentRegion changes
       }
     } catch (error) {
       // Silent error handling for production
@@ -165,13 +172,16 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const handleZoomOut = () => {
     try {
       if (mapRef.current && currentRegion) {
-        // Simple zoom by adjusting the region
+        console.log('Zoom out clicked, current region:', currentRegion);
+        // Zoom out by increasing the region size
         const newRegion = {
           ...currentRegion,
-          latitudeDelta: Math.min(currentRegion.latitudeDelta * 1.3, 10), // Prevent zooming too far
-          longitudeDelta: Math.min(currentRegion.longitudeDelta * 1.3, 10),
+          latitudeDelta: Math.min(currentRegion.latitudeDelta * 3.0, 2.0), // Very aggressive zoom out
+          longitudeDelta: Math.min(currentRegion.longitudeDelta * 3.0, 2.0),
         };
+        console.log('Zoom out - new region:', newRegion);
         setCurrentRegion(newRegion);
+        // Map will automatically update when currentRegion changes
       }
     } catch (error) {
       // Silent error handling for production
@@ -181,14 +191,16 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const handleMyLocation = () => {
     try {
       if (location && currentRegion) {
-        // Center map on user location
+        // Center map on user location with close zoom
         const newRegion = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          latitudeDelta: 0.01, // Much closer zoom
-          longitudeDelta: 0.01,
+          latitudeDelta: 0.005, // Very close zoom - show just neighborhood
+          longitudeDelta: 0.005,
         };
         setCurrentRegion(newRegion);
+        
+        // Map will automatically center when currentRegion changes
       }
     } catch (error) {
       // Silent error handling for production
@@ -277,7 +289,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           ref={mapRef}
           style={styles.map}
           styleURL={Mapbox.StyleURL.Street}
-          zoomLevel={Math.log2(360 / currentRegion.longitudeDelta)} // Calculate zoom from region
+          zoomLevel={16} // Fixed zoom level - was complex calculation
           centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
           showUserLocation={true}
           showUserHeadingIndicator={true}

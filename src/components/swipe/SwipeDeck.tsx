@@ -88,10 +88,15 @@ export function SwipeDeck({ onSwipe }: SwipeDeckProps) {
               <Text style={styles.profileName}>
                 {currentProfile.display_name}, {currentProfile.age}
               </Text>
-              <View style={[styles.intentBadge, { backgroundColor: getIntentColor(currentProfile.intent) }]}>
-                <Text style={styles.intentIcon}>{getIntentIcon(currentProfile.intent)}</Text>
-                <Text style={styles.intentText}>{currentProfile.intent}</Text>
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedIcon}>⭐</Text>
+                <Text style={styles.verifiedText}>Verified</Text>
               </View>
+            </View>
+            
+            <View style={styles.locationSection}>
+              <Text style={styles.locationIcon}>📍</Text>
+              <Text style={styles.locationText}>San Francisco, CA</Text>
             </View>
             
             {currentProfile.bio && (
@@ -102,9 +107,9 @@ export function SwipeDeck({ onSwipe }: SwipeDeckProps) {
             
             {currentProfile.interests && currentProfile.interests.length > 0 && (
               <View style={styles.interestsSection}>
-                <Text style={styles.interestsTitle}>Interests</Text>
+                <Text style={styles.interestsTitle}>INTERESTS</Text>
                 <View style={styles.interestsList}>
-                  {currentProfile.interests.slice(0, 4).map((interest, index) => (
+                  {currentProfile.interests.slice(0, 6).map((interest, index) => (
                     <View key={index} style={styles.interestTag}>
                       <Text style={styles.interestText}>{interest}</Text>
                     </View>
@@ -118,30 +123,21 @@ export function SwipeDeck({ onSwipe }: SwipeDeckProps) {
 
       {/* Action Buttons - matches web app exactly */}
       <View style={styles.actionButtons}>
-        <Button 
-          variant="outline" 
-          size="lg"
-          onClick={handleSkip}
-          style={styles.skipButton}
-        >
-          <Text style={styles.skipButtonText}>⏭️ Skip</Text>
-        </Button>
-        
-        <Button 
-          size="lg"
-          onClick={() => handleSwipe('left')}
+        <TouchableOpacity 
           style={styles.passButton}
+          onPress={() => handleSwipe('left')}
         >
-          <Text style={styles.passButtonText}>👎 Pass</Text>
-        </Button>
+          <Text style={styles.passButtonText}>✕</Text>
+          <Text style={styles.passButtonLabel}>Pass</Text>
+        </TouchableOpacity>
         
-        <Button 
-          size="lg"
-          onClick={() => handleSwipe('right')}
+        <TouchableOpacity 
           style={styles.likeButton}
+          onPress={() => handleSwipe('right')}
         >
-          <Text style={styles.likeButtonText}>❤️ Like</Text>
-        </Button>
+          <Text style={styles.likeButtonText}>❤️</Text>
+          <Text style={styles.likeButtonLabel}>Like</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.progressText}>
@@ -155,8 +151,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start', // Changed from 'center' to 'flex-start' to show top of card
     padding: 16,
+    paddingTop: 60, // Add top padding to account for header
     backgroundColor: colors.white,
   },
   loadingContainer: {
@@ -232,23 +229,42 @@ const styles = StyleSheet.create({
     color: colors.white,
     flex: 1,
   },
-  intentBadge: {
+  verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     marginLeft: 12,
+    backgroundColor: 'rgba(147, 51, 234, 0.8)', // Purple gradient background
   },
-  intentIcon: {
-    fontSize: 16,
+  verifiedIcon: {
+    fontSize: 14,
     marginRight: 6,
+    color: colors.white,
   },
-  intentText: {
+  verifiedText: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.white,
-    textTransform: 'capitalize',
+  },
+  locationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  locationIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    color: '#EF4444', // Red color like your example
+  },
+  locationText: {
+    fontSize: 14,
+    color: '#3B82F6', // Blue color like your example
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   profileBio: {
     fontSize: 16,
@@ -271,7 +287,9 @@ const styles = StyleSheet.create({
     // Removed gap property
   },
   interestTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(147, 51, 234, 0.6)', // Purple border like your example
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -300,20 +318,44 @@ const styles = StyleSheet.create({
     color: colors.foreground,
   },
   passButton: {
+    flex: 1,
     marginRight: 12,
-    backgroundColor: colors.gray[500],
+    backgroundColor: colors.gray[600],
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   passButtonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  passButtonLabel: {
+    color: colors.white,
+    fontSize: 14,
     fontWeight: '500',
   },
   likeButton: {
-    backgroundColor: colors.primary.DEFAULT,
+    flex: 1,
+    backgroundColor: '#EC4899', // Pink color like your example
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   likeButtonText: {
     color: colors.white,
-    fontSize: 16,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  likeButtonLabel: {
+    color: colors.white,
+    fontSize: 14,
     fontWeight: '500',
   },
   progressText: {
