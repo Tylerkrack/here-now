@@ -1,0 +1,21 @@
+ICON CREATION INSTRUCTIONS:
+
+1. Create a 1024x1024 PNG image
+2. Use a blue background (#6366f1)
+3. Add white "SS" text in the center
+4. Use a bold, sans-serif font
+5. Save as "icon.png" in the assets folder
+
+OR use this online tool:
+- Go to https://www.canva.com/
+- Create a 1024x1024 design
+- Add blue background
+- Add white "SS" text
+- Export as PNG
+- Save as "assets/icon.png"
+
+The icon will be used for:
+- App home screen icon
+- App Store icon
+- Settings icon
+- All iOS icon sizes 

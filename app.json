@@ -5,7 +5,7 @@
     "version": "1.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/icon.svg",
+    "icon": "./assets/icon.png",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.herenow.zone",
-      "buildNumber": "4",
+      "buildNumber": "5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "Allow SpotSwipe to use your location to show nearby zones and help you discover people in your area.",
@@ -27,7 +27,6 @@
       "entitlements": {
         "com.apple.developer.associated-domains": []
       },
-
       "usesIcloudStorage": false,
       "usesAppleSignIn": false,
       "deploymentTarget": "15.0"
