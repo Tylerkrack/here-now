@@ -48,7 +48,8 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Here Now to use your location to show nearby zones and help you discover people in your area."
         }
       ],
-      "expo-image-picker"
+      "expo-image-picker",
+      "react-native-maps"
     ],
     "scheme": "here-now",
     "extra": {
