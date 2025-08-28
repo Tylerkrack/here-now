@@ -211,16 +211,31 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       >
         {/* Zone Circles */}
         {zones.map((zone) => (
-          <Mapbox.CircleLayer
+          <Mapbox.ShapeSource
             key={zone.id}
             id={`zone-${zone.id}`}
-            style={{
-              circleRadius: zone.radius_meters,
-              circleColor: getZoneColor(zone.zone_type),
-              circleStrokeColor: getZoneBorderColor(zone.zone_type),
-              circleStrokeWidth: 3
+            shape={{
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [zone.longitude, zone.latitude]
+              },
+              properties: {
+                radius: zone.radius_meters,
+                type: zone.zone_type
+              }
             }}
-          />
+          >
+            <Mapbox.CircleLayer
+              id={`zone-circle-${zone.id}`}
+              style={{
+                circleRadius: zone.radius_meters,
+                circleColor: getZoneColor(zone.zone_type),
+                circleStrokeColor: getZoneBorderColor(zone.zone_type),
+                circleStrokeWidth: 3
+              }}
+            />
+          </Mapbox.ShapeSource>
         ))}
       </Mapbox.MapView>
 

@@ -18,8 +18,8 @@
       "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocationWhenInUseUsageDescription": "This app needs access to location to show nearby zones and help you discover people in your area.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to show nearby zones and help you discover people in your area.",
+        "NSLocationWhenInUseUsageDescription": "Allow Here Now to use your location to show nearby zones and help you discover people in your area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow Here Now to use your location to show nearby zones and help you discover people in your area.",
         "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to select profile photos.",
         "NSCameraUsageDescription": "This app needs access to your camera to take profile photos."
       },
@@ -50,14 +50,18 @@
         }
       ],
       "expo-image-picker",
-      "@rnmapbox/maps"
+      [
+        "@rnmapbox/maps",
+        {
+          "mapboxPublicKey": "YOUR_MAPBOX_PUBLIC_TOKEN"
+        }
+      ]
     ],
     "scheme": "here-now",
     "extra": {
       "eas": {
         "projectId": "c7124be2-ff1e-4af6-91dc-0d5f2ddf3007"
-      },
-      "mapboxPublicKey": "YOUR_MAPBOX_PUBLIC_TOKEN"
+      }
     }
   }
 }
