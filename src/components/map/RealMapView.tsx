@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, Alert } from 'react-native';
-import MapView, { Circle, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import Mapbox from '@rnmapbox/maps';
 import * as Location from 'expo-location';
 import { useZones } from '@/hooks/useZones';
 import { colors } from '@/lib/colors';
@@ -22,7 +22,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   });
   
   const { zones, loading: zonesLoading } = useZones();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<Mapbox.MapView>(null);
 
   const getCurrentLocation = async () => {
     try {
@@ -200,40 +200,29 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       </View>
 
       {/* Map */}
-      <MapView
+      <Mapbox.MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        initialRegion={currentRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        followsUserLocation={false}
-        showsCompass={true}
-        showsScale={true}
-        showsBuildings={true}
-        showsTraffic={false}
-        showsIndoors={true}
-        mapType="standard"
-        zoomEnabled={true}
-        scrollEnabled={true}
-        rotateEnabled={true}
-        pitchEnabled={true}
+        styleURL={Mapbox.StyleURL.Street}
+        zoomLevel={12}
+        centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
+        showUserLocation={true}
+        showUserHeadingIndicator={true}
       >
         {/* Zone Circles */}
         {zones.map((zone) => (
-          <Circle
+          <Mapbox.CircleLayer
             key={zone.id}
-            center={{
-              latitude: zone.latitude,
-              longitude: zone.longitude,
+            id={`zone-${zone.id}`}
+            style={{
+              circleRadius: zone.radius_meters,
+              circleColor: getZoneColor(zone.zone_type),
+              circleStrokeColor: getZoneBorderColor(zone.zone_type),
+              circleStrokeWidth: 3
             }}
-            radius={zone.radius_meters}
-            fillColor={getZoneColor(zone.zone_type)}
-            strokeColor={getZoneBorderColor(zone.zone_type)}
-            strokeWidth={3}
           />
         ))}
-      </MapView>
+      </Mapbox.MapView>
 
       {/* Map Controls - matches web app exactly */}
       <View style={styles.mapControls}>

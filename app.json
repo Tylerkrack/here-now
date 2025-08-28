@@ -26,6 +26,7 @@
       "entitlements": {
         "com.apple.developer.associated-domains": []
       },
+
       "usesIcloudStorage": false,
       "usesAppleSignIn": false,
       "deploymentTarget": "15.0"
@@ -48,13 +49,15 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Here Now to use your location to show nearby zones and help you discover people in your area."
         }
       ],
-      "expo-image-picker"
+      "expo-image-picker",
+      "@rnmapbox/maps"
     ],
     "scheme": "here-now",
     "extra": {
       "eas": {
         "projectId": "c7124be2-ff1e-4af6-91dc-0d5f2ddf3007"
-      }
+      },
+      "mapboxPublicKey": "YOUR_MAPBOX_PUBLIC_TOKEN"
     }
   }
 }
