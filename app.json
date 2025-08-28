@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.herenow.zone",
-      "buildNumber": "2",
+      "buildNumber": "3",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to show nearby zones and help you discover people in your area.",
@@ -48,8 +48,7 @@
           "locationAlwaysAndWhenInUsePermission": "Allow Here Now to use your location to show nearby zones and help you discover people in your area."
         }
       ],
-      "expo-image-picker",
-      "react-native-maps"
+      "expo-image-picker"
     ],
     "scheme": "here-now",
     "extra": {
