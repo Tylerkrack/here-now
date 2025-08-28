@@ -158,7 +158,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         setCurrentRegion(newRegion);
       }
     } catch (error) {
-      console.error('Error in handleZoomIn:', error);
+      // Silent error handling for production
     }
   };
 
@@ -174,7 +174,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         setCurrentRegion(newRegion);
       }
     } catch (error) {
-      console.error('Error in handleZoomOut:', error);
+      // Silent error handling for production
     }
   };
 
@@ -191,7 +191,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         setCurrentRegion(newRegion);
       }
     } catch (error) {
-      console.error('Error in handleMyLocation:', error);
+      // Silent error handling for production
     }
   };
 
@@ -277,13 +277,38 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           ref={mapRef}
           style={styles.map}
           styleURL={Mapbox.StyleURL.Street}
-          zoomLevel={14}
+          zoomLevel={Math.log2(360 / currentRegion.longitudeDelta)} // Calculate zoom from region
           centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
           showUserLocation={true}
           showUserHeadingIndicator={true}
           attributionEnabled={false}
           logoEnabled={false}
         >
+        {/* User Location Marker */}
+        {location && (
+          <Mapbox.ShapeSource
+            id="user-location"
+            shape={{
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [location.coords.longitude, location.coords.latitude]
+              },
+              properties: {}
+            }}
+          >
+            <Mapbox.CircleLayer
+              id="user-location-circle"
+              style={{
+                circleRadius: 8,
+                circleColor: colors.primary.DEFAULT,
+                circleStrokeColor: colors.white,
+                circleStrokeWidth: 2
+              }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+
         {/* Zone Circles */}
         {zones && Array.isArray(zones) && zones.map((zone) => {
           if (!zone || !zone.id || !zone.longitude || !zone.latitude || !zone.radius_meters) {
@@ -355,7 +380,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
             keyboardShouldPersistTaps="handled"
             scrollEnabled={true}
           >
-            {zones.slice(0, 3).map((zone) => {
+            {zones.map((zone) => {
               if (!zone || !zone.id || typeof zone.id !== 'string') return null; // Extra safety check
               return (
                 <TouchableOpacity
@@ -566,10 +591,10 @@ const styles = StyleSheet.create({
   },
   zonePanel: {
     position: 'absolute',
-    bottom: 70,
+    bottom: 100, // Increased from 70 to 100 to avoid blocking bottom nav
     left: 6,
     right: 6,
-    maxHeight: 200, // Limit height to prevent covering map
+    maxHeight: 180, // Reduced from 200 to 180 to give more space
     backgroundColor: colors.white,
     borderRadius: 8,
     padding: 6,
