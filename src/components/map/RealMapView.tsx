@@ -40,25 +40,52 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         return;
       }
 
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 5000,
-        distanceInterval: 10
+      // First, get approximate location quickly
+      const approximatePosition = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Low,
+        timeInterval: 1000,
+        distanceInterval: 100
       });
       
-      setLocation(position);
+      setLocation(approximatePosition);
       
-      // Update map region to current location
-      const newRegion = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
+      // Update map region to approximate location immediately
+      const approximateRegion = {
+        latitude: approximatePosition.coords.latitude,
+        longitude: approximatePosition.coords.longitude,
         latitudeDelta: 0.0922,
         longitudeDelta: 0.0421,
       };
-      setCurrentRegion(newRegion);
+      setCurrentRegion(approximateRegion);
       
       setError(null);
       setLoading(false);
+      
+      // Then, get more accurate location in background
+      setTimeout(async () => {
+        try {
+          const accuratePosition = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 5000,
+            distanceInterval: 10
+          });
+          
+          setLocation(accuratePosition);
+          
+          // Update map region to accurate location
+          const accurateRegion = {
+            latitude: accuratePosition.coords.latitude,
+            longitude: accuratePosition.coords.longitude,
+            latitudeDelta: 0.0922,
+            longitudeDelta: 0.0421,
+          };
+          setCurrentRegion(accurateRegion);
+        } catch (err) {
+          console.log('Background location refinement failed:', err);
+          // Don't show error to user since we already have approximate location
+        }
+      }, 2000);
+      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get location';
       setError(errorMessage);
@@ -283,9 +310,15 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       </View>
       
       {/* Zone Info Panel - shows nearby zones with manual entry for testing */}
-      {zones.length > 0 && (
-        <View style={styles.zonePanel}>
-          <Text style={styles.zonePanelTitle}>Nearby Zones ({zones.length})</Text>
+      <View style={styles.zonePanel}>
+        <Text style={styles.zonePanelTitle}>
+          {zonesLoading ? 'Loading zones...' : `Nearby Zones (${zones.length})`}
+        </Text>
+        {zonesLoading ? (
+          <View style={styles.zonesLoadingContainer}>
+            <Text style={styles.zonesLoadingText}>Finding zones near you...</Text>
+          </View>
+        ) : zones.length > 0 ? (
           <ScrollView style={styles.zoneList} showsVerticalScrollIndicator={false}>
             {zones.map((zone) => (
               <TouchableOpacity
@@ -310,11 +343,15 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
                   <Text style={styles.zoneType}>{zone.zone_type}</Text>
                 </View>
                 <Text style={styles.zoneDistance}>Enter</Text>
-                              </TouchableOpacity>
+              </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
-      )}
+        ) : (
+          <View style={styles.noZonesContainer}>
+            <Text style={styles.noZonesText}>No zones found nearby</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -553,6 +590,22 @@ const styles = StyleSheet.create({
   },
   mapPlaceholderText: {
     fontSize: 16,
+    color: colors.muted.foreground,
+  },
+  zonesLoadingContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  zonesLoadingText: {
+    fontSize: 14,
+    color: colors.muted.foreground,
+  },
+  noZonesContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  noZonesText: {
+    fontSize: 14,
     color: colors.muted.foreground,
   },
 });

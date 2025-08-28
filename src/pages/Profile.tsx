@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { IntentBadge, type Intent } from '@/components/ui/intent-badge';
+import { PhotoCarousel } from '@/components/ui/photo-carousel';
 import { supabase } from '@/integrations/supabase/client';
 import { colors } from '@/lib/colors';
 
@@ -152,21 +153,13 @@ export default function Profile() {
       
       {/* Profile Card - matches SwipeDeck exactly */}
       <View style={styles.previewCard}>
-        {/* Multiple Photos - show first 3 photos */}
-        <View style={styles.previewPhotosContainer}>
-          {[0, 1, 2].map((index) => (
-            <Image 
-              key={index}
-              source={{ 
-                uri: profile?.photos[index] || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face'
-              }} 
-              style={[
-                styles.previewPhoto,
-                index > 0 && styles.previewPhotoOverlay
-              ]}
-            />
-          ))}
-        </View>
+        {/* Photo Carousel - swipeable photos with dots */}
+        <PhotoCarousel 
+          photos={profile?.photos || []}
+          height={400}
+          showDots={true}
+          autoPlay={false}
+        />
         
         <View style={styles.previewOverlay}>
           <View style={styles.previewInfo}>
@@ -255,26 +248,7 @@ export default function Profile() {
               </Button>
             </View>
 
-            {/* Profile Photos - matches web app exactly */}
-            <View style={styles.photoSection}>
-              <Label style={styles.sectionLabel}>Profile Photos</Label>
-              <View style={styles.photoGrid}>
-                {[0, 1, 2, 3].map((index) => (
-                  <View key={index} style={styles.photoSlot}>
-                    {profile?.photos[index] ? (
-                      <Image 
-                        source={{ uri: profile.photos[index] }} 
-                        style={styles.photo}
-                      />
-                    ) : (
-                      <View style={styles.photoPlaceholder}>
-                        <Text style={styles.photoPlaceholderText}>+</Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </View>
-            </View>
+
 
             <View style={styles.inputGroup}>
               <Label style={styles.inputLabel}>Display Name</Label>
@@ -436,12 +410,21 @@ export default function Profile() {
                   </Button>
                 </>
               ) : (
-                <Button style={styles.editButton} onClick={() => {
-                  console.log('Edit button clicked, setting isEditing to true');
-                  setIsEditing(true);
-                }}>
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
-                </Button>
+                <>
+                  <Button style={styles.editButton} onClick={() => {
+                    console.log('Edit button clicked, setting isEditing to true');
+                    setIsEditing(true);
+                  }}>
+                    <Text style={styles.editButtonText}>Edit Profile</Text>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    style={styles.previewButton}
+                    onClick={() => setIsPreviewMode(true)}
+                  >
+                    <Text style={styles.previewButtonText}>Preview Profile</Text>
+                  </Button>
+                </>
               )}
             </View>
             
@@ -506,16 +489,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
   },
-  previewButton: {
-    backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: colors.primary.DEFAULT,
-  },
-  previewButtonText: {
-    color: colors.primary.DEFAULT,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+
   previewContainer: {
     flex: 1,
     backgroundColor: colors.white,
@@ -542,29 +516,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
-  previewPhotosContainer: {
-    flexDirection: 'row',
-    height: '100%',
-    width: '100%',
-    position: 'relative',
-  },
-  previewPhoto: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-  },
-  previewPhotoOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    borderRadius: 20,
-  },
+
   previewOverlay: {
     position: 'absolute',
     bottom: 0,
@@ -652,44 +604,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.foreground,
   },
-  photoSection: {
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: colors.foreground,
-    marginBottom: 8,
-  },
-  photoGrid: {
-    flexDirection: 'row',
-    // Removed gap property
-  },
-  photoSlot: {
-    width: 70,
-    height: 70,
-    marginRight: 6,
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-  },
-  photoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 8,
-    backgroundColor: colors.gray[100],
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.gray[300],
-    borderStyle: 'dashed',
-  },
-  photoPlaceholderText: {
-    fontSize: 20,
-    color: colors.gray[400],
-  },
+
   inputGroup: {
     marginBottom: 16,
   },
@@ -796,6 +711,17 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 14,
     fontWeight: '500',
+  },
+  previewButton: {
+    marginBottom: 6,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  previewButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.foreground,
   },
   saveButton: {
     marginBottom: 6,

@@ -1,73 +1,83 @@
-# Welcome to your Lovable project
+# SpotSwipe (formerly Here Now)
 
-## Project info
+A location-based social networking app built with React Native and Expo.
 
-**URL**: https://lovable.dev/projects/3a5aacf4-3137-4045-9ce4-44959ce863d2
+## Recent Updates
 
-## How can I edit this code?
+### Photo Carousel Component
+- **New**: Added `PhotoCarousel` component with swipeable photos and dots indicator
+- **Features**: 
+  - Left/right swipe through multiple photos
+  - Dots showing current photo position
+  - Auto-play capability (optional)
+  - Responsive design for mobile
+- **Usage**: Integrated into Profile preview and SwipeDeck for consistent UI
 
-There are several ways of editing your application.
+### Map Loading Optimization
+- **Progressive Loading**: Map now shows approximate location first, then refines
+- **Faster Initial Display**: Uses low-accuracy location initially for quick map loading
+- **Background Refinement**: Gets high-accuracy location in background without blocking UI
+- **Zone Loading States**: Added loading indicators for zones to improve perceived performance
 
-**Use Lovable**
+### Profile Preview Improvements
+- **Photo Carousel**: Profile preview now shows all photos with swipeable interface
+- **Consistent Design**: Matches web app profile card design exactly
+- **Preview Button**: Easy access to see how your profile appears to others
+- **Multiple Photos**: Support for up to 6 photos with proper display
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/3a5aacf4-3137-4045-9ce4-44959ce863d2) and start prompting.
+## Features
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Location-based Zones**: Discover and enter zones (cafes, bars, restaurants, etc.)
+- **Profile Management**: Create and edit profiles with multiple photos
+- **Intent-based Matching**: Dating, friendship, and networking intents
+- **Age Range Preferences**: Set age preferences for each intent type
+- **Real-time Location**: Uses Mapbox for accurate location services
+- **Photo Management**: Upload and manage multiple profile photos
 
-**Use your preferred IDE**
+## Technical Stack
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React Native with Expo
+- **Maps**: Mapbox integration
+- **Backend**: Supabase
+- **Authentication**: Supabase Auth
+- **Storage**: Supabase Storage for photos
+- **Navigation**: Expo Router
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Development
 
-Follow these steps:
+```bash
+# Install dependencies
+npm install
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Start development server
+npm start
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Build for iOS
+eas build --platform ios
 
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+# Build for Android
+eas build --platform android
 ```
 
-**Edit a file directly in GitHub**
+## Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Create a `.env` file with:
+```
+MAPBOX_PUBLIC_TOKEN=your_mapbox_token_here
+```
 
-**Use GitHub Codespaces**
+## Database Schema
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+The app uses Supabase with the following key tables:
+- `profiles`: User profile information
+- `zones`: Location-based zones
+- `matches`: User matches
+- `messages`: Chat messages
 
-## What technologies are used for this project?
+## Photo Requirements
 
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/3a5aacf4-3137-4045-9ce4-44959ce863d2) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- **Minimum**: 2 photos required
+- **Maximum**: 6 photos supported
+- **Format**: JPG/PNG
+- **Aspect Ratio**: 1:1 (square) recommended
+- **Storage**: Photos stored in Supabase Storage

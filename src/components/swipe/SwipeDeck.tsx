@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { Button } from '@/components/ui/button';
+import { PhotoCarousel } from '@/components/ui/photo-carousel';
 import { useProfilesToSwipe } from '@/hooks/useProfilesToSwipe';
 import { colors, getIntentColor } from '@/lib/colors';
 
@@ -74,11 +75,11 @@ export function SwipeDeck({ onSwipe }: SwipeDeckProps) {
     <View style={styles.container}>
       {/* Profile Card - matches web app exactly */}
       <View style={styles.card}>
-        <Image 
-          source={{ 
-            uri: currentProfile.photos[0] || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=600&fit=crop&crop=face'
-          }} 
-          style={styles.profileImage}
+        <PhotoCarousel 
+          photos={currentProfile.photos}
+          height={400}
+          showDots={true}
+          autoPlay={false}
         />
         
         <View style={styles.overlay}>
