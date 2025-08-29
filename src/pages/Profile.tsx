@@ -167,14 +167,15 @@ export default function Profile() {
               <Text style={styles.previewName}>
                 {profile?.display_name || 'Your Name'}, {profile?.age || '?'}
               </Text>
-              <View style={[styles.previewIntentBadge, { backgroundColor: getIntentColor(editedProfile.intents[0] || 'dating') }]}>
-                <Text style={styles.previewIntentIcon}>
-                  {editedProfile.intents[0] === 'dating' ? '💕' : 
-                   editedProfile.intents[0] === 'friendship' ? '🤝' : 
-                   editedProfile.intents[0] === 'networking' ? '💼' : '👋'}
-                </Text>
-                <Text style={styles.previewIntentText}>{editedProfile.intents[0] || 'dating'}</Text>
+              <View style={styles.previewVerifiedBadge}>
+                <Text style={styles.previewVerifiedIcon}>⭐</Text>
+                <Text style={styles.previewVerifiedText}>Verified</Text>
               </View>
+            </View>
+            
+            <View style={styles.previewLocationSection}>
+              <Text style={styles.previewLocationIcon}>📍</Text>
+              <Text style={styles.previewLocationText}>San Francisco, CA</Text>
             </View>
             
             {profile?.bio && (
@@ -185,9 +186,9 @@ export default function Profile() {
             
             {profile?.interests && profile.interests.length > 0 && (
               <View style={styles.previewInterestsSection}>
-                <Text style={styles.previewInterestsTitle}>Interests</Text>
+                <Text style={styles.previewInterestsTitle}>INTERESTS</Text>
                 <View style={styles.previewInterestsList}>
-                  {profile.interests.slice(0, 4).map((interest, index) => (
+                  {profile.interests.slice(0, 6).map((interest, index) => (
                     <View key={index} style={styles.previewInterestTag}>
                       <Text style={styles.previewInterestText}>{interest}</Text>
                     </View>
@@ -542,23 +543,42 @@ const styles = StyleSheet.create({
     color: colors.white,
     flex: 1,
   },
-  previewIntentBadge: {
+  previewVerifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16, // Increased from 12 to 16
-    paddingVertical: 8, // Increased from 6 to 8
-    borderRadius: 24, // Increased from 20 to 24
-    marginLeft: 16, // Increased from 12 to 16
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    marginLeft: 16,
+    backgroundColor: colors.primary.DEFAULT, // Use your primary color
   },
-  previewIntentIcon: {
-    fontSize: 18, // Increased from 16 to 18
-    marginRight: 8, // Increased from 6 to 8
+  previewVerifiedIcon: {
+    fontSize: 18,
+    marginRight: 8,
+    color: colors.white,
   },
-  previewIntentText: {
-    fontSize: 14, // Increased from 12 to 14
+  previewVerifiedText: {
+    fontSize: 14,
     fontWeight: '600',
     color: colors.white,
-    textTransform: 'capitalize',
+  },
+  previewLocationSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  previewLocationIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    color: colors.destructive.DEFAULT, // Use your destructive color (red)
+  },
+  previewLocationText: {
+    fontSize: 14,
+    color: colors.primary.DEFAULT, // Use your primary color
+    backgroundColor: colors.muted.DEFAULT, // Use your muted background color
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   previewBio: {
     fontSize: 18, // Increased from 16 to 18
@@ -580,12 +600,14 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   previewInterestTag: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)', // Increased opacity
-    paddingHorizontal: 12, // Increased from 10 to 12
-    paddingVertical: 6, // Increased from 4 to 6
-    borderRadius: 16, // Increased from 12 to 16
-    marginRight: 10, // Increased from 8 to 10
-    marginBottom: 10, // Increased from 8 to 10
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.primary.DEFAULT, // Use your primary color for border
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 10,
+    marginBottom: 10,
   },
   previewInterestText: {
     fontSize: 13, // Increased from 12 to 13

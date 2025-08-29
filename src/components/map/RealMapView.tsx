@@ -10,8 +10,7 @@ import { colors } from '@/lib/colors';
 interface Region {
   latitude: number;
   longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
+  zoomLevel: number;
 }
 
 interface RealMapViewProps {
@@ -52,8 +51,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
       const approximateRegion = {
         latitude: approximatePosition.coords.latitude,
         longitude: approximatePosition.coords.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
+        zoomLevel: 16, // Street level zoom
       };
       setCurrentRegion(approximateRegion);
       
@@ -75,8 +73,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           const accurateRegion = {
             latitude: accuratePosition.coords.latitude,
             longitude: accuratePosition.coords.longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
+            zoomLevel: 16, // Street level zoom
           };
           setCurrentRegion(accurateRegion);
         } catch (err) {
@@ -109,19 +106,12 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         // Update map center when location changes
       useEffect(() => {
         if (location && mapRef.current) {
-          console.log('Location changed, setting new region:', {
-            lat: location.coords.latitude,
-            lng: location.coords.longitude
-          });
-          
           const newRegion = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
-            latitudeDelta: 0.001, // Very close zoom - show just street level
-            longitudeDelta: 0.001, // Very close zoom - show just street level
+            zoomLevel: 16, // Street level zoom
           };
           setCurrentRegion(newRegion);
-          // Map will automatically center when centerCoordinate prop changes
         }
       }, [location]);
 
@@ -153,16 +143,12 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const handleZoomIn = () => {
     try {
       if (mapRef.current && currentRegion) {
-        console.log('Zoom in clicked, current region:', currentRegion);
-        // Zoom in by reducing the region size
+        // Zoom in by increasing zoom level
         const newRegion = {
           ...currentRegion,
-          latitudeDelta: Math.max(currentRegion.latitudeDelta * 0.3, 0.0005), // Very aggressive zoom in
-          longitudeDelta: Math.max(currentRegion.longitudeDelta * 0.3, 0.0005),
+          zoomLevel: Math.min(currentRegion.zoomLevel + 2, 20), // Zoom in by 2 levels, max 20
         };
-        console.log('Zoom in - new region:', newRegion);
         setCurrentRegion(newRegion);
-        // Map will automatically update when currentRegion changes
       }
     } catch (error) {
       // Silent error handling for production
@@ -172,16 +158,12 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const handleZoomOut = () => {
     try {
       if (mapRef.current && currentRegion) {
-        console.log('Zoom out clicked, current region:', currentRegion);
-        // Zoom out by increasing the region size
+        // Zoom out by decreasing zoom level
         const newRegion = {
           ...currentRegion,
-          latitudeDelta: Math.min(currentRegion.latitudeDelta * 3.0, 2.0), // Very aggressive zoom out
-          longitudeDelta: Math.min(currentRegion.longitudeDelta * 3.0, 2.0),
+          zoomLevel: Math.max(currentRegion.zoomLevel - 2, 10), // Zoom out by 2 levels, min 10
         };
-        console.log('Zoom out - new region:', newRegion);
         setCurrentRegion(newRegion);
-        // Map will automatically update when currentRegion changes
       }
     } catch (error) {
       // Silent error handling for production
@@ -191,16 +173,13 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   const handleMyLocation = () => {
     try {
       if (location && currentRegion) {
-        // Center map on user location with close zoom
+        // Center map on user location with street level zoom
         const newRegion = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          latitudeDelta: 0.005, // Very close zoom - show just neighborhood
-          longitudeDelta: 0.005,
+          zoomLevel: 16, // Street level zoom
         };
         setCurrentRegion(newRegion);
-        
-        // Map will automatically center when currentRegion changes
       }
     } catch (error) {
       // Silent error handling for production
@@ -289,12 +268,13 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           ref={mapRef}
           style={styles.map}
           styleURL={Mapbox.StyleURL.Street}
-          zoomLevel={16} // Fixed zoom level - was complex calculation
+          zoomLevel={currentRegion.zoomLevel}
           centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
           showUserLocation={true}
           showUserHeadingIndicator={true}
           attributionEnabled={false}
           logoEnabled={false}
+          key={`${currentRegion.latitude}-${currentRegion.longitude}-${currentRegion.zoomLevel}`}
         >
         {/* User Location Marker */}
         {location && (
