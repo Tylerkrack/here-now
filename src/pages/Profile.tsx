@@ -65,7 +65,7 @@ export default function Profile() {
         display_name: profile.display_name || '',
         age: profile.age?.toString() || '',
         bio: profile.bio || '',
-        intents: profile.intent ? [profile.intent as Intent] : [], // Convert single intent to array
+        intents: profile.intent ? [getUIIntent(profile.intent)] : [], // Convert database intent to UI intent
         interests: profile.interests || [],
         ageRanges: {
           dating: { min: profile.dating_age_min || 18, max: profile.dating_age_max || 50 },
@@ -112,7 +112,7 @@ export default function Profile() {
       if (result?.error) {
         Alert.alert('Error', result.error);
       } else {
-        setIsEditing(false);
+        // Don't reset editing state - keep the UI state so checkmarks remain visible
         Alert.alert('Success', 'Profile updated successfully!');
       }
     } catch (error) {
@@ -127,7 +127,7 @@ export default function Profile() {
         display_name: profile.display_name || '',
         age: profile.age?.toString() || '',
         bio: profile.bio || '',
-        intents: profile.intent ? [profile.intent as Intent] : ['dating'],
+        intents: profile.intent ? [getUIIntent(profile.intent)] : ['dating'],
         interests: profile.interests || [],
         ageRanges: {
           dating: { min: profile.dating_age_min || 18, max: profile.dating_age_max || 50 },
@@ -165,7 +165,7 @@ export default function Profile() {
         {/* Photo Carousel - swipeable photos with dots */}
                  <PhotoCarousel 
            photos={profile?.photos || []}
-           height={200}
+           height={160}
            showDots={true}
            autoPlay={false}
          />
@@ -188,7 +188,7 @@ export default function Profile() {
             </View>
             
             {profile?.bio && (
-              <Text style={styles.previewBio} numberOfLines={3}>
+              <Text style={styles.previewBio} numberOfLines={2}>
                 {profile.bio}
               </Text>
             )}
@@ -197,7 +197,7 @@ export default function Profile() {
               <View style={styles.previewInterestsSection}>
                 <Text style={styles.previewInterestsTitle}>INTERESTS</Text>
                 <View style={styles.previewInterestsList}>
-                  {profile.interests.slice(0, 6).map((interest, index) => (
+                  {profile.interests.slice(0, 4).map((interest, index) => (
                     <View key={index} style={styles.previewInterestTag}>
                       <Text style={styles.previewInterestText}>{interest}</Text>
                     </View>
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: '100%',
-    height: 380, // Reduced height to fit on screen properly
+    height: 320, // Reduced height significantly to fit on screen properly
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
@@ -546,12 +546,12 @@ const styles = StyleSheet.create({
 
   previewOverlay: {
     position: 'absolute',
-    top: 200, // Position below the photo (200px height)
+    top: 180, // Position below the photo (180px height)
     left: 0,
     right: 0,
     bottom: 0, // Extend to bottom of card
     backgroundColor: 'rgba(0, 0, 0, 0.9)', // Darker overlay for more vibrant look
-    padding: 20,
+    padding: 16, // Reduced padding to fit content better
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   previewName: {
-    fontSize: 22, // Reduced from 28 to fit better
+    fontSize: 20, // Reduced from 22 to fit better
     fontWeight: 'bold',
     color: colors.white,
     flex: 1,
@@ -573,54 +573,54 @@ const styles = StyleSheet.create({
   previewVerifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 24,
-    marginLeft: 16,
+    paddingHorizontal: 12, // Reduced from 16
+    paddingVertical: 6, // Reduced from 8
+    borderRadius: 20, // Reduced from 24
+    marginLeft: 12, // Reduced from 16
     backgroundColor: colors.primary.DEFAULT, // Use your primary color
   },
   previewVerifiedIcon: {
-    fontSize: 18,
-    marginRight: 8,
+    fontSize: 16, // Reduced from 18
+    marginRight: 6, // Reduced from 8
     color: colors.white,
   },
   previewVerifiedText: {
-    fontSize: 14,
+    fontSize: 12, // Reduced from 14
     fontWeight: '600',
     color: colors.white,
   },
   previewLocationSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8, // Reduced from 12
   },
   previewLocationIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    fontSize: 14, // Reduced from 16
+    marginRight: 6, // Reduced from 8
     color: colors.destructive.DEFAULT, // Use your destructive color (red)
   },
   previewLocationText: {
-    fontSize: 14,
+    fontSize: 12, // Reduced from 14
     color: colors.primary.DEFAULT, // Use your primary color
     backgroundColor: colors.muted.DEFAULT, // Use your muted background color
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 6, // Reduced from 8
+    paddingVertical: 3, // Reduced from 4
+    borderRadius: 10, // Reduced from 12
   },
   previewBio: {
-    fontSize: 14, // Reduced from 18 to fit better
+    fontSize: 12, // Reduced from 14 to fit better
     color: colors.white,
-    lineHeight: 18, // Reduced from 24 to fit better
-    marginBottom: 16, // Reduced from 20 to fit better
+    lineHeight: 16, // Reduced from 18 to fit better
+    marginBottom: 12, // Reduced from 16 to fit better
   },
   previewInterestsSection: {
-    marginBottom: 20, // Increased from 16 to 20
+    marginBottom: 16, // Reduced from 20
   },
   previewInterestsTitle: {
-    fontSize: 14, // Reduced from 16 to fit better
+    fontSize: 12, // Reduced from 14 to fit better
     fontWeight: '600',
     color: colors.white,
-    marginBottom: 10, // Reduced from 12 to fit better
+    marginBottom: 8, // Reduced from 10 to fit better
   },
   previewInterestsList: {
     flexDirection: 'row',
@@ -630,14 +630,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.primary.DEFAULT, // Use your primary color for border
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 10,
-    marginBottom: 10,
+    paddingHorizontal: 8, // Reduced from 12
+    paddingVertical: 4, // Reduced from 6
+    borderRadius: 12, // Reduced from 16
+    marginRight: 8, // Reduced from 10
+    marginBottom: 8, // Reduced from 10
   },
   previewInterestText: {
-    fontSize: 11, // Reduced from 13 to fit better
+    fontSize: 10, // Reduced from 11 to fit better
     color: colors.white,
     fontWeight: '500', // Added font weight
   },
