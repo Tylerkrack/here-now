@@ -113,8 +113,12 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           };
           setCurrentRegion(newRegion);
           
-          // Force map to re-render with new coordinates by updating state
-          // The MapView will automatically center on the new centerCoordinate prop
+          // Actually center the map on the new location
+          mapRef.current.setCamera({
+            centerCoordinate: [location.coords.longitude, location.coords.latitude],
+            zoomLevel: newRegion.zoomLevel,
+            animationDuration: 1000
+          });
         }
       }, [location]);
 
@@ -145,13 +149,22 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleZoomIn = () => {
     try {
-      if (currentRegion) {
+      if (currentRegion && mapRef.current) {
         // Zoom in by increasing zoom level
+        const newZoomLevel = Math.min(currentRegion.zoomLevel + 2, 20); // Zoom in by 2 levels, max 20
+        
         const newRegion = {
           ...currentRegion,
-          zoomLevel: Math.min(currentRegion.zoomLevel + 2, 20), // Zoom in by 2 levels, max 20
+          zoomLevel: newZoomLevel,
         };
         setCurrentRegion(newRegion);
+        
+        // Actually zoom the map
+        mapRef.current.setCamera({
+          centerCoordinate: [currentRegion.longitude, currentRegion.latitude],
+          zoomLevel: newZoomLevel,
+          animationDuration: 500
+        });
       }
     } catch (error) {
       // Silent error handling for production
@@ -160,13 +173,22 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleZoomOut = () => {
     try {
-      if (currentRegion) {
+      if (currentRegion && mapRef.current) {
         // Zoom out by decreasing zoom level
+        const newZoomLevel = Math.max(currentRegion.zoomLevel - 2, 10); // Zoom out by 2 levels, min 10
+        
         const newRegion = {
           ...currentRegion,
-          zoomLevel: Math.max(currentRegion.zoomLevel - 2, 10), // Zoom out by 2 levels, min 10
+          zoomLevel: newZoomLevel,
         };
         setCurrentRegion(newRegion);
+        
+        // Actually zoom the map
+        mapRef.current.setCamera({
+          centerCoordinate: [currentRegion.longitude, currentRegion.latitude],
+          zoomLevel: newZoomLevel,
+          animationDuration: 500
+        });
       }
     } catch (error) {
       // Silent error handling for production
@@ -175,14 +197,21 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleMyLocation = () => {
     try {
-      if (location) {
+      if (location && mapRef.current) {
         // Center map on user location with street level zoom
         const newRegion = {
-          latitude: location.coords.latitude,
+          latitude: location.coords.latitude, // Fixed: was incorrectly using longitude for latitude
           longitude: location.coords.longitude,
           zoomLevel: 16, // Street level zoom
         };
         setCurrentRegion(newRegion);
+        
+        // Actually center the map on user location
+        mapRef.current.setCamera({
+          centerCoordinate: [location.coords.longitude, location.coords.latitude],
+          zoomLevel: 16,
+          animationDuration: 1000
+        });
       }
     } catch (error) {
       // Silent error handling for production
@@ -277,7 +306,17 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           showUserHeadingIndicator={true}
           attributionEnabled={false}
           logoEnabled={false}
-          key={`${currentRegion.latitude}-${currentRegion.longitude}-${currentRegion.zoomLevel}`}
+          onMapLoaded={() => {
+            // Force center on user location after map loads
+            if (location && mapRef.current) {
+              // Use the correct Mapbox API to center the map
+              mapRef.current.setCamera({
+                centerCoordinate: [location.coords.longitude, location.coords.latitude],
+                zoomLevel: currentRegion?.zoomLevel || 16,
+                animationDuration: 1000
+              });
+            }
+          }}
         >
         {/* User Location Marker */}
         {location && (

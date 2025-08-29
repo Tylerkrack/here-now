@@ -84,11 +84,21 @@ export default function Profile() {
       // Save all selected intents - this is the fix for the intent saving issue
       const selectedIntents = editedProfile.intents;
       
+      // Map UI intents to database intents
+      const getDatabaseIntent = (uiIntent: string): string => {
+        switch (uiIntent) {
+          case 'dating': return 'casual'; // Map dating to casual
+          case 'friendship': return 'friends'; // Map friendship to friends
+          case 'networking': return 'networking'; // Keep networking as is
+          default: return 'casual';
+        }
+      };
+      
       const updates = {
         display_name: editedProfile.display_name,
         age: parseInt(editedProfile.age),
         bio: editedProfile.bio,
-        intent: selectedIntents[0] || 'dating', // Save only the first selected intent (database only supports one)
+        intent: getDatabaseIntent(selectedIntents[0] || 'dating'), // Map to database intent
         interests: editedProfile.interests,
         dating_age_min: editedProfile.ageRanges.dating.min,
         dating_age_max: editedProfile.ageRanges.dating.max,
@@ -153,12 +163,12 @@ export default function Profile() {
       {/* Profile Card - matches SwipeDeck exactly */}
       <View style={styles.previewCard}>
         {/* Photo Carousel - swipeable photos with dots */}
-        <PhotoCarousel 
-          photos={profile?.photos || []}
-          height={250}
-          showDots={true}
-          autoPlay={false}
-        />
+                 <PhotoCarousel 
+           photos={profile?.photos || []}
+           height={200}
+           showDots={true}
+           autoPlay={false}
+         />
         
         <View style={styles.previewOverlay}>
           <View style={styles.previewInfo}>
@@ -521,7 +531,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: '100%',
-    height: 450, // Increased height to give space for photo (250px) + text overlay
+    height: 380, // Reduced height to fit on screen properly
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
@@ -536,12 +546,12 @@ const styles = StyleSheet.create({
 
   previewOverlay: {
     position: 'absolute',
-    top: 250, // Position below the photo (250px height)
+    top: 200, // Position below the photo (200px height)
     left: 0,
     right: 0,
     bottom: 0, // Extend to bottom of card
     backgroundColor: 'rgba(0, 0, 0, 0.9)', // Darker overlay for more vibrant look
-    padding: 24,
+    padding: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -555,7 +565,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   previewName: {
-    fontSize: 28, // Increased from 24 to 28
+    fontSize: 22, // Reduced from 28 to fit better
     fontWeight: 'bold',
     color: colors.white,
     flex: 1,
@@ -598,19 +608,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   previewBio: {
-    fontSize: 18, // Increased from 16 to 18
+    fontSize: 14, // Reduced from 18 to fit better
     color: colors.white,
-    lineHeight: 24, // Increased from 22 to 24
-    marginBottom: 20, // Increased from 16 to 20
+    lineHeight: 18, // Reduced from 24 to fit better
+    marginBottom: 16, // Reduced from 20 to fit better
   },
   previewInterestsSection: {
     marginBottom: 20, // Increased from 16 to 20
   },
   previewInterestsTitle: {
-    fontSize: 16, // Increased from 14 to 16
+    fontSize: 14, // Reduced from 16 to fit better
     fontWeight: '600',
     color: colors.white,
-    marginBottom: 12, // Increased from 8 to 12
+    marginBottom: 10, // Reduced from 12 to fit better
   },
   previewInterestsList: {
     flexDirection: 'row',
@@ -627,7 +637,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   previewInterestText: {
-    fontSize: 13, // Increased from 12 to 13
+    fontSize: 11, // Reduced from 13 to fit better
     color: colors.white,
     fontWeight: '500', // Added font weight
   },
