@@ -21,12 +21,7 @@
       "distribution": "store",
       "ios": {
         "resourceClass": "default",
-        "buildConfiguration": "Release",
-        "podInstallCommand": "cd ios && pod install --repo-update --verbose --no-repo-update",
-        "cocoapods": {
-          "deploymentTarget": "13.0"
-        },
-        "prebuildCommand": "cd ios && pod repo update && pod install --verbose"
+        "buildConfiguration": "Release"
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
@@ -39,11 +34,7 @@
       "autoIncrement": true,
       "ios": {
         "resourceClass": "default",
-        "buildConfiguration": "Release",
-        "podInstallCommand": "cd ios && pod install --repo-update --verbose",
-        "cocoapods": {
-          "deploymentTarget": "13.0"
-        }
+        "buildConfiguration": "Release"
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
