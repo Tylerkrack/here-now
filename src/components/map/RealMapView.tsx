@@ -26,6 +26,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
   
   const { zones, loading: zonesLoading } = useZones();
   const mapRef = useRef<Mapbox.MapView>(null);
+  const cameraRef = useRef<Mapbox.Camera>(null);
 
   const getCurrentLocation = async () => {
     try {
@@ -103,9 +104,21 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
     getCurrentLocation();
   }, []);
 
+  // Auto-center map when location is first obtained
+  useEffect(() => {
+    if (location && cameraRef.current && currentRegion) {
+      // Center map on user location when first loaded
+      cameraRef.current.setCamera({
+        centerCoordinate: [location.coords.longitude, location.coords.latitude],
+        zoomLevel: currentRegion.zoomLevel,
+        animationDuration: 1000
+      });
+    }
+  }, [location, currentRegion]);
+
         // Update map center when location changes
       useEffect(() => {
-        if (location && mapRef.current) {
+        if (location && cameraRef.current) {
           const newRegion = {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude,
@@ -113,8 +126,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           };
           setCurrentRegion(newRegion);
           
-          // Actually center the map on the new location
-          mapRef.current.setCamera({
+          // Actually center the map on the new location using Camera component
+          cameraRef.current.setCamera({
             centerCoordinate: [location.coords.longitude, location.coords.latitude],
             zoomLevel: newRegion.zoomLevel,
             animationDuration: 1000
@@ -149,7 +162,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleZoomIn = () => {
     try {
-      if (currentRegion && mapRef.current) {
+      if (currentRegion && cameraRef.current) {
         // Zoom in by increasing zoom level
         const newZoomLevel = Math.min(currentRegion.zoomLevel + 2, 20); // Zoom in by 2 levels, max 20
         
@@ -159,8 +172,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         };
         setCurrentRegion(newRegion);
         
-        // Actually zoom the map
-        mapRef.current.setCamera({
+        // Actually zoom the map using Camera component
+        cameraRef.current.setCamera({
           centerCoordinate: [currentRegion.longitude, currentRegion.latitude],
           zoomLevel: newZoomLevel,
           animationDuration: 500
@@ -173,7 +186,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleZoomOut = () => {
     try {
-      if (currentRegion && mapRef.current) {
+      if (currentRegion && cameraRef.current) {
         // Zoom out by decreasing zoom level
         const newZoomLevel = Math.max(currentRegion.zoomLevel - 2, 10); // Zoom out by 2 levels, min 10
         
@@ -183,8 +196,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         };
         setCurrentRegion(newRegion);
         
-        // Actually zoom the map
-        mapRef.current.setCamera({
+        // Actually zoom the map using Camera component
+        cameraRef.current.setCamera({
           centerCoordinate: [currentRegion.longitude, currentRegion.latitude],
           zoomLevel: newZoomLevel,
           animationDuration: 500
@@ -197,7 +210,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleMyLocation = () => {
     try {
-      if (location && mapRef.current) {
+      if (location && cameraRef.current) {
         // Center map on user location with street level zoom
         const newRegion = {
           latitude: location.coords.latitude, // Fixed: was incorrectly using longitude for latitude
@@ -206,8 +219,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
         };
         setCurrentRegion(newRegion);
         
-        // Actually center the map on user location
-        mapRef.current.setCamera({
+        // Actually center the map on user location using Camera component
+        cameraRef.current.setCamera({
           centerCoordinate: [location.coords.longitude, location.coords.latitude],
           zoomLevel: 16,
           animationDuration: 1000
@@ -306,18 +319,15 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           showUserHeadingIndicator={true}
           attributionEnabled={false}
           logoEnabled={false}
-          onMapLoaded={() => {
-            // Force center on user location after map loads
-            if (location && mapRef.current) {
-              // Use the correct Mapbox API to center the map
-              mapRef.current.setCamera({
-                centerCoordinate: [location.coords.longitude, location.coords.latitude],
-                zoomLevel: currentRegion?.zoomLevel || 16,
-                animationDuration: 1000
-              });
-            }
-          }}
         >
+        {/* Camera component for programmatic map control */}
+        <Mapbox.Camera
+          ref={cameraRef}
+          centerCoordinate={[currentRegion.longitude, currentRegion.latitude]}
+          zoomLevel={currentRegion.zoomLevel}
+          animationDuration={1000}
+        />
+        
         {/* User Location Marker */}
         {location && (
           <Mapbox.ShapeSource

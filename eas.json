@@ -12,27 +12,44 @@
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
-        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}"
+        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}",
+        "COCOAPODS_DISABLE_STATS": "1",
+        "COCOAPODS_SKIP_CACHE": "1"
       }
     },
     "preview": {
       "distribution": "store",
       "ios": {
-        "resourceClass": "default"
+        "resourceClass": "default",
+        "buildConfiguration": "Release",
+        "podInstallCommand": "cd ios && pod install --repo-update --verbose --no-repo-update",
+        "cocoapods": {
+          "deploymentTarget": "13.0"
+        },
+        "prebuildCommand": "cd ios && pod repo update && pod install --verbose"
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
-        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}"
+        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}",
+        "COCOAPODS_DISABLE_STATS": "1",
+        "COCOAPODS_SKIP_CACHE": "1"
       }
     },
     "production": {
       "autoIncrement": true,
       "ios": {
-        "resourceClass": "default"
+        "resourceClass": "default",
+        "buildConfiguration": "Release",
+        "podInstallCommand": "cd ios && pod install --repo-update --verbose",
+        "cocoapods": {
+          "deploymentTarget": "13.0"
+        }
       },
       "env": {
         "PACKAGE_MANAGER": "npm",
-        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}"
+        "MAPBOX_PUBLIC_TOKEN": "${MAPBOX_PUBLIC_TOKEN}",
+        "COCOAPODS_DISABLE_STATS": "1",
+        "COCOAPODS_SKIP_CACHE": "1"
       }
     }
   },
