@@ -156,7 +156,7 @@ export default function Profile() {
         {/* Photo Carousel - swipeable photos with dots */}
         <PhotoCarousel 
           photos={profile?.photos || []}
-          height={400}
+          height={280}
           showDots={true}
           autoPlay={false}
         />
@@ -291,86 +291,103 @@ export default function Profile() {
               <Label style={styles.inputLabel}>What are you looking for?</Label>
               <View style={styles.intentOptions}>
                 {intentOptions.map((intent) => (
-                  <TouchableOpacity
-                    key={intent}
-                    style={[
-                      styles.intentOption,
-                      editedProfile.intents.includes(intent) && styles.intentOptionActive
-                    ]}
-                    onPress={() => {
-                      if (isEditing) {
-                        setEditedProfile(prev => ({
-                          ...prev,
-                          intents: prev.intents.includes(intent)
-                            ? prev.intents.filter(i => i !== intent)
-                            : [...prev.intents, intent]
-                        }));
-                      }
-                    }}
-                    disabled={!isEditing}
-                  >
-                    <IntentBadge intent={intent} />
-                  </TouchableOpacity>
+                                     <TouchableOpacity
+                     key={intent}
+                     style={[
+                       styles.intentOption,
+                       editedProfile.intents.includes(intent) && styles.intentOptionActive
+                     ]}
+                     onPress={() => {
+                       if (isEditing) {
+                         setEditedProfile(prev => {
+                           const newIntents = prev.intents.includes(intent)
+                             ? prev.intents.filter(i => i !== intent)
+                             : [...prev.intents, intent];
+                           
+                           // Initialize age ranges for new intents
+                           const newAgeRanges = { ...prev.ageRanges };
+                           if (!newAgeRanges[intent]) {
+                             newAgeRanges[intent] = { min: 18, max: 50 };
+                           }
+                           
+                           return {
+                             ...prev,
+                             intents: newIntents,
+                             ageRanges: newAgeRanges
+                           };
+                         });
+                       }
+                     }}
+                     disabled={!isEditing}
+                   >
+                     <View style={styles.intentContainer}>
+                       <IntentBadge intent={intent} />
+                       {editedProfile.intents.includes(intent) && (
+                         <View style={styles.intentSelectedIndicator}>
+                           <Text style={styles.intentSelectedText}>✓</Text>
+                         </View>
+                       )}
+                     </View>
+                   </TouchableOpacity>
                 ))}
               </View>
             </View>
 
-            {/* Age Range Preferences - show for each selected intent */}
-            {editedProfile.intents.length > 0 && (
-              <View style={styles.inputGroup}>
-                <Label style={styles.inputLabel}>Age Ranges for Each Intent</Label>
-                {editedProfile.intents.map((intent) => {
-                  const uiIntent = getUIIntent(intent);
-                  // Add safety check to prevent crashes
-                  if (!editedProfile.ageRanges[uiIntent]) {
-                    console.warn(`Missing age range for intent: ${intent} -> ${uiIntent}`);
-                    return null;
-                  }
-                  return (
-                    <View key={intent} style={styles.intentAgeRangeContainer}>
-                      <Label style={styles.intentAgeRangeLabel}>{intent.charAt(0).toUpperCase() + intent.slice(1)}</Label>
-                      <View style={styles.ageRangeContainer}>
-                        <View style={styles.ageRangeInput}>
-                          <Label style={styles.ageRangeLabel}>Min Age</Label>
-                          <Input
-                            placeholder="18"
-                            keyboardType="numeric"
-                            value={editedProfile.ageRanges[uiIntent].min.toString()}
-                            onChangeText={(text) => setEditedProfile(prev => ({ 
-                              ...prev, 
-                              ageRanges: {
-                                ...prev.ageRanges,
-                                [uiIntent]: { ...prev.ageRanges[uiIntent], min: parseInt(text) || 18 }
-                              }
-                            }))}
-                            editable={isEditing}
-                            style={styles.ageInput}
-                          />
-                        </View>
-                        <Text style={styles.ageRangeSeparator}>to</Text>
-                        <View style={styles.ageRangeInput}>
-                          <Label style={styles.ageRangeLabel}>Max Age</Label>
-                          <Input
-                            placeholder="50"
-                            keyboardType="numeric"
-                            value={editedProfile.ageRanges[uiIntent].max.toString()}
-                            onChangeText={(text) => setEditedProfile(prev => ({ 
-                              ...prev, 
-                              ageRanges: {
-                                ...prev.ageRanges,
-                                [uiIntent]: { ...prev.ageRanges[uiIntent], max: parseInt(text) || 50 }
-                              }
-                            }))}
-                            editable={isEditing}
-                            style={styles.ageInput}
-                          />
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
+                         {/* Age Range Preferences - show for each selected intent */}
+             {editedProfile.intents.length > 0 && (
+               <View style={styles.inputGroup}>
+                 <Label style={styles.inputLabel}>Age Ranges for Each Intent</Label>
+                 {editedProfile.intents.map((intent) => {
+                   // Use the intent directly instead of converting it
+                   if (!editedProfile.ageRanges[intent]) {
+                     console.warn(`Missing age range for intent: ${intent}`);
+                     return null;
+                   }
+                   return (
+                     <View key={intent} style={styles.intentAgeRangeContainer}>
+                       <Label style={styles.intentAgeRangeLabel}>{intent.charAt(0).toUpperCase() + intent.slice(1)}</Label>
+                       <View style={styles.ageRangeContainer}>
+                         <View style={styles.ageRangeInput}>
+                           <Label style={styles.ageRangeLabel}>Min Age</Label>
+                           <Input
+                             placeholder="18"
+                             keyboardType="numeric"
+                             value={editedProfile.ageRanges[intent].min.toString()}
+                             onChangeText={(text) => setEditedProfile(prev => ({ 
+                               ...prev, 
+                               ageRanges: {
+                                 ...prev.ageRanges,
+                                 [intent]: { ...prev.ageRanges[intent], min: parseInt(text) || 18 }
+                               }
+                             }))}
+                             editable={isEditing}
+                             style={styles.ageInput}
+                           />
+                         </View>
+                         <Text style={styles.ageRangeSeparator}>to</Text>
+                         <View style={styles.ageRangeInput}>
+                           <Label style={styles.ageRangeLabel}>Max Age</Label>
+                           <Input
+                             placeholder="50"
+                             keyboardType="numeric"
+                             value={editedProfile.ageRanges[intent].max.toString()}
+                             onChangeText={(text) => setEditedProfile(prev => ({ 
+                               ...prev, 
+                               ageRanges: {
+                                 ...prev.ageRanges,
+                                 [intent]: { ...prev.ageRanges[intent], max: parseInt(text) || 50 }
+                               }
+                             }))}
+                             editable={isEditing}
+                             style={styles.ageInput}
+                           />
+                         </View>
+                       </View>
+                     </View>
+                   );
+                 })}
+               </View>
+             )}
 
             <View style={styles.inputGroup}>
               <Label style={styles.inputLabel}>Interests & Activities</Label>
@@ -505,7 +522,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: '100%',
-    height: 400, // Increased height for better profile look
+    height: 500, // Adjusted height: 280px photo + 220px text area
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
@@ -523,7 +540,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)', // Darker overlay for more vibrant look
     padding: 24,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -779,5 +796,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.foreground,
     marginBottom: 8,
+  },
+  intentContainer: {
+    position: 'relative',
+  },
+  intentSelectedIndicator: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  intentSelectedText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 }); 

@@ -112,6 +112,25 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
             zoomLevel: 16, // Street level zoom
           };
           setCurrentRegion(newRegion);
+          
+          // Actually move the map to the new location
+          if (mapRef.current) {
+            try {
+              // Use the proper Mapbox method to center on user location
+              mapRef.current.setCamera({
+                centerCoordinate: [location.coords.longitude, location.coords.latitude],
+                zoomLevel: 16,
+                animationDuration: 1000
+              });
+            } catch (error) {
+              // Fallback: try to use setCenter if setCamera doesn't exist
+              try {
+                mapRef.current.setCenter([location.coords.longitude, location.coords.latitude], 1000);
+              } catch (fallbackError) {
+                // If both fail, we'll rely on the props to update
+              }
+            }
+          }
         }
       }, [location]);
 
@@ -274,7 +293,6 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           showUserHeadingIndicator={true}
           attributionEnabled={false}
           logoEnabled={false}
-          key={`${currentRegion.latitude}-${currentRegion.longitude}-${currentRegion.zoomLevel}`}
         >
         {/* User Location Marker */}
         {location && (
