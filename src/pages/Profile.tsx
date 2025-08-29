@@ -112,7 +112,39 @@ export default function Profile() {
       if (result?.error) {
         Alert.alert('Error', result.error);
       } else {
-        // Don't reset editing state - keep the UI state so checkmarks remain visible
+        // Update the local profile state to reflect the saved changes
+        if (profile) {
+          const updatedProfile = {
+            ...profile,
+            display_name: editedProfile.display_name,
+            age: parseInt(editedProfile.age),
+            bio: editedProfile.bio,
+            intent: getDatabaseIntent(selectedIntents[0] || 'dating'),
+            interests: editedProfile.interests,
+            dating_age_min: editedProfile.ageRanges.dating.min,
+            dating_age_max: editedProfile.ageRanges.dating.max,
+            friendship_age_min: editedProfile.ageRanges.friendship.min,
+            friendship_age_max: editedProfile.ageRanges.friendship.max,
+            networking_age_min: editedProfile.ageRanges.networking.min,
+            networking_age_max: editedProfile.ageRanges.networking.max
+          };
+          
+          // Force a re-render by updating the profile state
+          // This will trigger the useEffect and update the UI
+          setEditedProfile({
+            display_name: updatedProfile.display_name || '',
+            age: updatedProfile.age?.toString() || '',
+            bio: updatedProfile.bio || '',
+            intents: updatedProfile.intent ? [getUIIntent(updatedProfile.intent)] : [],
+            interests: updatedProfile.interests || [],
+            ageRanges: {
+              dating: { min: updatedProfile.dating_age_min || 18, max: updatedProfile.dating_age_max || 50 },
+              friendship: { min: updatedProfile.friendship_age_min || 18, max: updatedProfile.friendship_age_max || 50 },
+              networking: { min: updatedProfile.networking_age_min || 18, max: updatedProfile.networking_age_max || 50 }
+            }
+          });
+        }
+        
         Alert.alert('Success', 'Profile updated successfully!');
       }
     } catch (error) {
@@ -165,7 +197,7 @@ export default function Profile() {
         {/* Photo Carousel - swipeable photos with dots */}
                  <PhotoCarousel 
            photos={profile?.photos || []}
-           height={160}
+           height={80}
            showDots={true}
            autoPlay={false}
          />
@@ -174,7 +206,7 @@ export default function Profile() {
           <View style={styles.previewInfo}>
             <View style={styles.previewHeader}>
               <Text style={styles.previewName}>
-                {profile?.display_name || 'Your Name'}, {profile?.age || '?'}
+                {editedProfile.display_name || 'Your Name'}, {editedProfile.age || '?'}
               </Text>
               <View style={styles.previewVerifiedBadge}>
                 <Text style={styles.previewVerifiedIcon}>⭐</Text>
@@ -187,17 +219,17 @@ export default function Profile() {
               <Text style={styles.previewLocationText}>San Francisco, CA</Text>
             </View>
             
-            {profile?.bio && (
+            {editedProfile.bio && (
               <Text style={styles.previewBio} numberOfLines={2}>
-                {profile.bio}
+                {editedProfile.bio}
               </Text>
             )}
             
-            {profile?.interests && profile.interests.length > 0 && (
+            {editedProfile.interests && editedProfile.interests.length > 0 && (
               <View style={styles.previewInterestsSection}>
                 <Text style={styles.previewInterestsTitle}>INTERESTS</Text>
                 <View style={styles.previewInterestsList}>
-                  {profile.interests.slice(0, 4).map((interest, index) => (
+                  {editedProfile.interests.slice(0, 4).map((interest, index) => (
                     <View key={index} style={styles.previewInterestTag}>
                       <Text style={styles.previewInterestText}>{interest}</Text>
                     </View>
@@ -531,7 +563,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: '100%',
-    height: 320, // Reduced height significantly to fit on screen properly
+    height: 240, // Reduced height even more to fit on screen properly
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
@@ -546,12 +578,12 @@ const styles = StyleSheet.create({
 
   previewOverlay: {
     position: 'absolute',
-    top: 180, // Position below the photo (180px height)
+    top: 100, // Position below the photo (100px height)
     left: 0,
     right: 0,
     bottom: 0, // Extend to bottom of card
     backgroundColor: 'rgba(0, 0, 0, 0.9)', // Darker overlay for more vibrant look
-    padding: 16, // Reduced padding to fit content better
+    padding: 10, // Reduced padding to fit content better
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
@@ -565,7 +597,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   previewName: {
-    fontSize: 20, // Reduced from 22 to fit better
+    fontSize: 18, // Reduced from 20 to fit better
     fontWeight: 'bold',
     color: colors.white,
     flex: 1,
@@ -573,54 +605,54 @@ const styles = StyleSheet.create({
   previewVerifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 6, // Reduced from 8
-    borderRadius: 20, // Reduced from 24
-    marginLeft: 12, // Reduced from 16
+    paddingHorizontal: 10, // Reduced from 12
+    paddingVertical: 5, // Reduced from 6
+    borderRadius: 18, // Reduced from 20
+    marginLeft: 10, // Reduced from 12
     backgroundColor: colors.primary.DEFAULT, // Use your primary color
   },
   previewVerifiedIcon: {
-    fontSize: 16, // Reduced from 18
-    marginRight: 6, // Reduced from 8
+    fontSize: 14, // Reduced from 16
+    marginRight: 5, // Reduced from 6
     color: colors.white,
   },
   previewVerifiedText: {
-    fontSize: 12, // Reduced from 14
+    fontSize: 11, // Reduced from 12
     fontWeight: '600',
     color: colors.white,
   },
   previewLocationSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8, // Reduced from 12
+    marginBottom: 6, // Reduced from 8
   },
   previewLocationIcon: {
-    fontSize: 14, // Reduced from 16
-    marginRight: 6, // Reduced from 8
+    fontSize: 12, // Reduced from 14
+    marginRight: 5, // Reduced from 6
     color: colors.destructive.DEFAULT, // Use your destructive color (red)
   },
   previewLocationText: {
-    fontSize: 12, // Reduced from 14
+    fontSize: 11, // Reduced from 12
     color: colors.primary.DEFAULT, // Use your primary color
     backgroundColor: colors.muted.DEFAULT, // Use your muted background color
-    paddingHorizontal: 6, // Reduced from 8
-    paddingVertical: 3, // Reduced from 4
-    borderRadius: 10, // Reduced from 12
+    paddingHorizontal: 5, // Reduced from 6
+    paddingVertical: 2, // Reduced from 3
+    borderRadius: 8, // Reduced from 10
   },
   previewBio: {
-    fontSize: 12, // Reduced from 14 to fit better
+    fontSize: 11, // Reduced from 12 to fit better
     color: colors.white,
-    lineHeight: 16, // Reduced from 18 to fit better
-    marginBottom: 12, // Reduced from 16 to fit better
+    lineHeight: 14, // Reduced from 16 to fit better
+    marginBottom: 8, // Reduced from 12 to fit better
   },
   previewInterestsSection: {
-    marginBottom: 16, // Reduced from 20
+    marginBottom: 12, // Reduced from 16
   },
   previewInterestsTitle: {
-    fontSize: 12, // Reduced from 14 to fit better
+    fontSize: 11, // Reduced from 12 to fit better
     fontWeight: '600',
     color: colors.white,
-    marginBottom: 8, // Reduced from 10 to fit better
+    marginBottom: 6, // Reduced from 8 to fit better
   },
   previewInterestsList: {
     flexDirection: 'row',
@@ -630,14 +662,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.primary.DEFAULT, // Use your primary color for border
-    paddingHorizontal: 8, // Reduced from 12
-    paddingVertical: 4, // Reduced from 6
-    borderRadius: 12, // Reduced from 16
-    marginRight: 8, // Reduced from 10
-    marginBottom: 8, // Reduced from 10
+    paddingHorizontal: 6, // Reduced from 8
+    paddingVertical: 3, // Reduced from 4
+    borderRadius: 10, // Reduced from 12
+    marginRight: 6, // Reduced from 8
+    marginBottom: 6, // Reduced from 8
   },
   previewInterestText: {
-    fontSize: 10, // Reduced from 11 to fit better
+    fontSize: 9, // Reduced from 10 to fit better
     color: colors.white,
     fontWeight: '500', // Added font weight
   },
