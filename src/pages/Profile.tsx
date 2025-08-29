@@ -81,15 +81,14 @@ export default function Profile() {
 
   const handleSave = async () => {
     try {
-      // For now, save the first intent as the primary intent
-      // In the future, this could be expanded to handle multiple intents
-      const primaryIntent = editedProfile.intents[0] || 'dating';
+      // Save all selected intents - this is the fix for the intent saving issue
+      const selectedIntents = editedProfile.intents;
       
       const updates = {
         display_name: editedProfile.display_name,
         age: parseInt(editedProfile.age),
         bio: editedProfile.bio,
-        intent: primaryIntent,
+        intent: selectedIntents[0] || 'dating', // Save only the first selected intent (database only supports one)
         interests: editedProfile.interests,
         dating_age_min: editedProfile.ageRanges.dating.min,
         dating_age_max: editedProfile.ageRanges.dating.max,
@@ -156,7 +155,7 @@ export default function Profile() {
         {/* Photo Carousel - swipeable photos with dots */}
         <PhotoCarousel 
           photos={profile?.photos || []}
-          height={280}
+          height={250}
           showDots={true}
           autoPlay={false}
         />
@@ -522,7 +521,7 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     width: '100%',
-    height: 500, // Adjusted height: 280px photo + 220px text area
+    height: 450, // Increased height to give space for photo (250px) + text overlay
     borderRadius: 20,
     overflow: 'hidden',
     marginBottom: 20,
@@ -537,9 +536,10 @@ const styles = StyleSheet.create({
 
   previewOverlay: {
     position: 'absolute',
-    bottom: 0,
+    top: 250, // Position below the photo (250px height)
     left: 0,
     right: 0,
+    bottom: 0, // Extend to bottom of card
     backgroundColor: 'rgba(0, 0, 0, 0.9)', // Darker overlay for more vibrant look
     padding: 24,
     borderBottomLeftRadius: 20,

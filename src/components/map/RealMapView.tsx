@@ -113,24 +113,8 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           };
           setCurrentRegion(newRegion);
           
-          // Actually move the map to the new location
-          if (mapRef.current) {
-            try {
-              // Use the proper Mapbox method to center on user location
-              mapRef.current.setCamera({
-                centerCoordinate: [location.coords.longitude, location.coords.latitude],
-                zoomLevel: 16,
-                animationDuration: 1000
-              });
-            } catch (error) {
-              // Fallback: try to use setCenter if setCamera doesn't exist
-              try {
-                mapRef.current.setCenter([location.coords.longitude, location.coords.latitude], 1000);
-              } catch (fallbackError) {
-                // If both fail, we'll rely on the props to update
-              }
-            }
-          }
+          // Force map to re-render with new coordinates by updating state
+          // The MapView will automatically center on the new centerCoordinate prop
         }
       }, [location]);
 
@@ -161,7 +145,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleZoomIn = () => {
     try {
-      if (mapRef.current && currentRegion) {
+      if (currentRegion) {
         // Zoom in by increasing zoom level
         const newRegion = {
           ...currentRegion,
@@ -176,7 +160,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleZoomOut = () => {
     try {
-      if (mapRef.current && currentRegion) {
+      if (currentRegion) {
         // Zoom out by decreasing zoom level
         const newRegion = {
           ...currentRegion,
@@ -191,7 +175,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
 
   const handleMyLocation = () => {
     try {
-      if (location && currentRegion) {
+      if (location) {
         // Center map on user location with street level zoom
         const newRegion = {
           latitude: location.coords.latitude,
@@ -293,6 +277,7 @@ export function RealMapView({ onEnterZone, onOpenSettings }: RealMapViewProps) {
           showUserHeadingIndicator={true}
           attributionEnabled={false}
           logoEnabled={false}
+          key={`${currentRegion.latitude}-${currentRegion.longitude}-${currentRegion.zoomLevel}`}
         >
         {/* User Location Marker */}
         {location && (
